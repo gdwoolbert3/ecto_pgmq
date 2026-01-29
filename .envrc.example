@@ -1,0 +1,1 @@
+export ECTO_PGMQ_POSTGRES_URL=postgresql://ecto_pgmq:ecto_pgmq@localhost:5432/ecto_pgmq

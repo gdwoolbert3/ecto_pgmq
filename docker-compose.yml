@@ -1,0 +1,28 @@
+services:
+  postgres:
+    build:
+      context: .
+      dockerfile: ./docker/postgres/Dockerfile
+    container_name: postgres
+    environment:
+      POSTGRES_USER: ecto_pgmq
+      POSTGRES_PASSWORD: ecto_pgmq
+      POSTGRES_DB: ecto_pgmq
+    ports:
+      - "5432:5432"
+    volumes:
+      # Configure initialization scripts
+      - ./docker/postgres/create_extensions.sql:/docker-entrypoint-initdb.d/create_extensions.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ecto_pgmq"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+  
+  healthy:
+    image: alpine
+    command: echo "All services started and healthy!"
+    depends_on:
+      postgres:
+        condition: service_healthy
