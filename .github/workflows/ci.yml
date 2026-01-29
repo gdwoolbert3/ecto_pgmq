@@ -16,6 +16,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+      
+      - name: Start Postgres
+        run: docker compose up -d
 
       - name: Setup Elixir and Erlang versions
         uses: erlef/setup-beam@v1
