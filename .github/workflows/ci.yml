@@ -40,7 +40,10 @@ jobs:
         run: mix deps.get
 
       - name: Run CI
-        run: mix ci
+        run: |
+          mix ci
+        env:
+          ECTO_PGMQ_POSTGRES_URL: postgresql://ecto_pgmq:ecto_pgmq@localhost:5432/ecto_pgmq
 
       - name: Output test coverage
         run: echo "$(mix test.coverage)" >> $GITHUB_STEP_SUMMARY
