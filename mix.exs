@@ -59,7 +59,7 @@ defmodule EctoPGMQ.MixProject do
       {:ecto_sql, "~> 3.11"},
       {:postgrex, ">= 0.0.0"},
       {:broadway, "~> 1.0", optional: true},
-      {:ex_doc, "~> 0.39.1", only: :dev, runtime: false},
+      {:ex_doc, "~> 0.40.0", only: :dev, runtime: false},
       {:credo, "~> 1.7.13", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev, :test], runtime: false},
       {:styler, "~> 1.9.1", only: [:dev, :test], runtime: false}
