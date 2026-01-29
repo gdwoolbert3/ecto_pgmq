@@ -62,7 +62,7 @@ defmodule EctoPGMQ.MixProject do
       {:ex_doc, "~> 0.39.1", only: :dev, runtime: false},
       {:credo, "~> 1.7.13", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev, :test], runtime: false},
-      {:styler, "~> 1.9.1", only: [:dev, :test], runtime: false}
+      {:styler, "~> 1.10.1", only: [:dev, :test], runtime: false}
     ]
   end
 
