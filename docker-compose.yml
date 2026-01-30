@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: ./docker/postgres/Dockerfile
-    container_name: postgres
+    container_name: ecto-pgmq-postgres
     environment:
       POSTGRES_USER: ecto_pgmq
       POSTGRES_PASSWORD: ecto_pgmq
