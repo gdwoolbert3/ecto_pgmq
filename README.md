@@ -18,7 +18,7 @@ defp deps do
     {:postgrex, ">= 0.0.0"},
     # Required to use the EctoPGMQ.Producer module
     {:broadway, "~> 1.0"},
-    {:ecto_pgmq, "~> 1.0"}
+    {:ecto_pgmq, "~> 1.1"}
   ]
 end
 ```

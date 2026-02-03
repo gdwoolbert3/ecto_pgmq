@@ -2,7 +2,7 @@ defmodule EctoPGMQ.MixProject do
   use Mix.Project
 
   @github "https://github.com/gdwoolbert3/ecto_pgmq"
-  @version "0.1.0"
+  @version "1.1.0"
 
   ################################
   # Public API
