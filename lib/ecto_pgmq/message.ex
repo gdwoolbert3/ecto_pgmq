@@ -48,6 +48,7 @@ defmodule EctoPGMQ.Message do
           enqueued_at: DateTime.t(),
           archived_at: DateTime.t() | nil,
           visible_at: DateTime.t(),
+          last_read_at: DateTime.t() | nil,
           payload: payload(),
           headers: headers() | nil,
           group: group() | nil
@@ -62,9 +63,10 @@ defmodule EctoPGMQ.Message do
   embedded_schema do
     field(:id, :integer, primary_key: true, source: :msg_id)
     field(:reads, :integer, source: :read_ct)
-    field(:enqueued_at, :utc_datetime)
-    field(:archived_at, :utc_datetime, load_in_query: false)
-    field(:visible_at, :utc_datetime, source: :vt)
+    field(:enqueued_at, :utc_datetime_usec)
+    field(:archived_at, :utc_datetime_usec, load_in_query: false)
+    field(:visible_at, :utc_datetime_usec, source: :vt)
+    field(:last_read_at, :utc_datetime_usec)
     field(:payload, :map, source: :message)
     field(:headers, :map)
     field(:group, :string, virtual: true)

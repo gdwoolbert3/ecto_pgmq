@@ -133,10 +133,9 @@ defmodule EctoPGMQ do
 
   The following attributes are supported:
 
-    * `:visibility_timeout` - A required `t:visibility_timeout/0` for the
-      messages.
+    * `:visibility_timeout` - A required `t:delay/0` for the messages.
   """
-  @type message_update_attributes :: %{visibility_timeout: visibility_timeout()}
+  @type message_update_attributes :: %{visibility_timeout: delay()}
 
   @typedoc """
   The minimum time between notifications.

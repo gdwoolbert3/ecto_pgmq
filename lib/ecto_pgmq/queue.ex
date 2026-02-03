@@ -31,7 +31,7 @@ defmodule EctoPGMQ.Queue do
   @primary_key false
   embedded_schema do
     field(:name, :string, source: :queue_name, primary_key: true)
-    field(:created_at, :utc_datetime)
+    field(:created_at, :utc_datetime_usec)
     field(:is_partitioned, :boolean)
     field(:is_unlogged, :boolean)
     field(:metrics, :map, virtual: true)

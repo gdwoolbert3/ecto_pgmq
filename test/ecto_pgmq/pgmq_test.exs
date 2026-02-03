@@ -466,11 +466,25 @@ defmodule EctoPGMQ.PGMQTest do
   end
 
   describe "set_vt/5" do
-    test "will update message visibility timeouts", ctx do
+    test "will update message visibility timeouts with an integer delay", ctx do
       message_specs = [%{"id" => 1}, %{"id" => 2}]
       message_ids = EctoPGMQ.send_messages(Repo, ctx.queue, message_specs)
       messages = all_queue_messages(Repo, ctx.queue)
       response = PGMQ.set_vt(Repo, ctx.queue, message_ids, 300)
+
+      # Validate that invisible messages will not be read
+      assert PGMQ.read(Repo, ctx.queue, 300, 1) == []
+
+      # Validate that the response contains the expected records
+      assert updated_messages?(response, messages, 300, 2)
+    end
+
+    test "will update message visibility timeouts with a timestamp delay", ctx do
+      message_specs = [%{"id" => 1}, %{"id" => 2}]
+      message_ids = EctoPGMQ.send_messages(Repo, ctx.queue, message_specs)
+      [message | _] = messages = all_queue_messages(Repo, ctx.queue)
+      delay = DateTime.shift(message.visible_at, second: 300)
+      response = PGMQ.set_vt(Repo, ctx.queue, message_ids, delay)
 
       # Validate that invisible messages will not be read
       assert PGMQ.read(Repo, ctx.queue, 300, 1) == []

@@ -36,6 +36,6 @@ defmodule EctoPGMQ.Throttle do
   schema "notify_insert_throttle" do
     field(:queue, :string, primary_key: true, source: :queue_name)
     field(:throttle, DurationType, source: :throttle_interval_ms, time_unit: :millisecond)
-    field(:last_notified_at, :utc_datetime)
+    field(:last_notified_at, :utc_datetime_usec)
   end
 end

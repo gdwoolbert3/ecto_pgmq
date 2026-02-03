@@ -859,20 +859,11 @@ defmodule EctoPGMQ.PGMQ do
       iex> DateTime.diff(updated_message.visible_at, read_message.visible_at) > 0
       true
   """
-  @spec set_vt(Repo.t(), Queue.name(), [Message.id()], visibility_timeout()) :: [Message.t()]
-  @spec set_vt(Repo.t(), Queue.name(), [Message.id()], visibility_timeout(), [query_opt()]) :: [Message.t()]
-  def set_vt(repo, queue, message_ids, visibility_timeout, opts \\ []) do
-    # Prefix must be assigned in the initial query to override schema prefix
-    from(m in {"set_vt", Message}, prefix: nil)
-    |> with_cte("set_vt",
-      as:
-        fragment(
-          "SELECT * FROM pgmq.set_vt(?::text, ?::bigint[], ?::integer)",
-          ^queue,
-          ^message_ids,
-          ^visibility_timeout
-        )
-    )
+  @spec set_vt(Repo.t(), Queue.name(), [Message.id()], delay()) :: [Message.t()]
+  @spec set_vt(Repo.t(), Queue.name(), [Message.id()], delay(), [query_opt()]) :: [Message.t()]
+  def set_vt(repo, queue, message_ids, delay, opts \\ []) do
+    queue
+    |> set_vt_query(message_ids, delay)
     |> repo.all(opts)
   end
 
@@ -930,4 +921,33 @@ defmodule EctoPGMQ.PGMQ do
   defp pg_type(%Duration{}), do: "interval"
   defp pg_type(%DateTime{}), do: "timestamp with time zone"
   defp pg_type(int) when is_integer(int), do: "integer"
+
+  # This rigmarole is needed because Ecto (admittedly correctly) doesn't allow
+  # dynamic fragments. However, the type of the `delay` parameter should still
+  # match the type that would have been returned by `pg_type/1`.
+  defp set_vt_query(queue, message_ids, %DateTime{} = delay) do
+    # Prefix must be assigned in the initial query to override schema prefix
+    with_cte(from(m in {"set_vt", Message}, prefix: nil), "set_vt",
+      as:
+        fragment(
+          "SELECT * FROM pgmq.set_vt(?::text, ?::bigint[], ?::timestamp with time zone)",
+          ^queue,
+          ^message_ids,
+          ^delay
+        )
+    )
+  end
+
+  defp set_vt_query(queue, message_ids, delay) when is_integer(delay) do
+    # Prefix must be assigned in the initial query to override schema prefix
+    with_cte(from(m in {"set_vt", Message}, prefix: nil), "set_vt",
+      as:
+        fragment(
+          "SELECT * FROM pgmq.set_vt(?::text, ?::bigint[], ?::integer)",
+          ^queue,
+          ^message_ids,
+          ^delay
+        )
+    )
+  end
 end
