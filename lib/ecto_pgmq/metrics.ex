@@ -34,7 +34,7 @@ defmodule EctoPGMQ.Metrics do
     field(:lifetime_messages, :integer, source: :total_messages)
     field(:newest_message_age, DurationType, source: :newest_msg_age_sec)
     field(:oldest_message_age, DurationType, source: :oldest_msg_age_sec)
-    field(:requested_at, :utc_datetime, source: :scrape_time)
+    field(:requested_at, :utc_datetime_usec, source: :scrape_time)
   end
 
   ################################
