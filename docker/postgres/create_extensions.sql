@@ -1,3 +1,6 @@
+-- pg_partman
 CREATE SCHEMA IF NOT EXISTS partman;
 CREATE EXTENSION IF NOT EXISTS pg_partman SCHEMA partman;
+
+-- pgmq
 CREATE EXTENSION IF NOT EXISTS pgmq;
