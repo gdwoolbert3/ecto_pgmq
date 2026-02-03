@@ -3,7 +3,7 @@ FROM postgres:18-alpine
 ARG PG_PARTMAN_VERSION=v5.3.1
 ARG PGMQ_VERSION=v1.9.0
 
-RUN apk add --no-cache \
+RUN apk add --no-cache --virtual .build-deps \
     git \
     make
 
@@ -18,4 +18,5 @@ RUN git clone https://github.com/pgmq/pgmq.git /tmp/pgmq && \
     cd pgmq-extension && \
     make install
 
-RUN rm -rf /tmp/*
+RUN apk del .build-deps && \
+    rm -rf /tmp/*
