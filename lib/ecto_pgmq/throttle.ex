@@ -24,7 +24,8 @@ defmodule EctoPGMQ.Throttle do
   @type t :: %__MODULE__{
           queue: EctoPGMQ.Queue.name(),
           throttle: Duration.t(),
-          last_notified_at: DateTime.t() | nil
+          last_notified_at: DateTime.t() | nil,
+          __meta__: Ecto.Schema.Metadata.t()
         }
 
   ################################
