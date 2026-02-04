@@ -325,16 +325,16 @@ defmodule EctoPGMQ do
       true
 
       iex> queue = create_queue(Repo, "my_partitioned_queue", %{partitions: {10_000, 100_000}})
-      iex> match?(%EctoPGMQ.Queue{is_partitioned: true}, queue)
+      iex> match?(%EctoPGMQ.Queue{partitioned?: true}, queue)
       true
 
       iex> partitions = {Duration.new!(hour: 1), Duration.new!(day: 1)}
       iex> queue = create_queue(Repo, "my_partitioned_queue", %{partitions: partitions})
-      iex> match?(%EctoPGMQ.Queue{is_partitioned: true}, queue)
+      iex> match?(%EctoPGMQ.Queue{partitioned?: true}, queue)
       true
 
       iex> queue = create_queue(Repo, "my_unlogged_queue", %{unlogged?: true})
-      iex> match?(%EctoPGMQ.Queue{is_unlogged: true}, queue)
+      iex> match?(%EctoPGMQ.Queue{unlogged?: true}, queue)
       true
   """
   @doc group: "Queue API"
