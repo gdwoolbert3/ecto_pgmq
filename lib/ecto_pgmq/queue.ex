@@ -18,8 +18,8 @@ defmodule EctoPGMQ.Queue do
   @type t :: %__MODULE__{
           name: name(),
           created_at: DateTime.t(),
-          is_partitioned: boolean(),
-          is_unlogged: boolean(),
+          partitioned?: boolean(),
+          unlogged?: boolean(),
           metrics: EctoPGMQ.Metrics.t() | nil,
           notifications: EctoPGMQ.Throttle.t() | nil
         }
@@ -32,8 +32,8 @@ defmodule EctoPGMQ.Queue do
   embedded_schema do
     field(:name, :string, source: :queue_name, primary_key: true)
     field(:created_at, :utc_datetime_usec)
-    field(:is_partitioned, :boolean)
-    field(:is_unlogged, :boolean)
+    field(:partitioned?, :boolean, source: :is_partitioned)
+    field(:unlogged?, :boolean, source: :is_unlogged)
     field(:metrics, :map, virtual: true)
 
     has_one(:notifications, EctoPGMQ.Throttle, foreign_key: :queue, references: :name)

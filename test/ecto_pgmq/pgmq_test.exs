@@ -79,8 +79,8 @@ defmodule EctoPGMQ.PGMQTest do
       assert %Queue{
                name: "my_unpartitioned_queue",
                created_at: %DateTime{},
-               is_partitioned: false,
-               is_unlogged: false,
+               partitioned?: false,
+               unlogged?: false,
                metrics: %Metrics{},
                notifications: nil
              } = EctoPGMQ.get_queue(Repo, "my_unpartitioned_queue")
@@ -100,8 +100,8 @@ defmodule EctoPGMQ.PGMQTest do
       assert %Queue{
                name: "my_partitioned_queue",
                created_at: %DateTime{},
-               is_partitioned: true,
-               is_unlogged: false,
+               partitioned?: true,
+               unlogged?: false,
                metrics: %Metrics{},
                notifications: nil
              } = EctoPGMQ.get_queue(Repo, "my_partitioned_queue")
@@ -119,8 +119,8 @@ defmodule EctoPGMQ.PGMQTest do
       assert %Queue{
                name: "my_partitioned_queue",
                created_at: %DateTime{},
-               is_partitioned: true,
-               is_unlogged: false,
+               partitioned?: true,
+               unlogged?: false,
                metrics: %Metrics{},
                notifications: nil
              } = EctoPGMQ.get_queue(Repo, "my_partitioned_queue")
@@ -140,8 +140,8 @@ defmodule EctoPGMQ.PGMQTest do
       assert %Queue{
                name: "my_unlogged_queue",
                created_at: %DateTime{},
-               is_partitioned: false,
-               is_unlogged: true,
+               partitioned?: false,
+               unlogged?: true,
                metrics: %Metrics{},
                notifications: nil
              } = EctoPGMQ.get_queue(Repo, "my_unlogged_queue")
