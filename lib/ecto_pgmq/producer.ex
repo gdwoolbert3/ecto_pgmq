@@ -53,7 +53,7 @@ if Code.ensure_loaded?(Broadway) do
     [listener: MyListener, read_interval: :infinity, ...]
     ```
 
-    > #### Warning {: .warning}
+    > #### Race Conditions {: .warning}
     >
     > A purely notification-based consumer will be subject to race conditions
     > when connecting/reconnecting to the DB. In practice, this means that there
@@ -120,7 +120,7 @@ if Code.ensure_loaded?(Broadway) do
     end
     ```
 
-    > #### Warning {: .warning}
+    > #### Deleting on Read {: .warning}
     >
     > All acknowledgement configuration is effectively ignored when deleting
     > messages on read.

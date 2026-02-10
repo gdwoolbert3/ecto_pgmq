@@ -140,7 +140,7 @@ defmodule EctoPGMQ.Message do
   @doc """
   Constructs a message specification for the given payload, group, and headers.
 
-  > #### Warning {: .warning}
+  > #### Multiple Groups {: .warning}
   >
   > If the group is not `nil`, it will override any group that may already be
   > specified in the headers.

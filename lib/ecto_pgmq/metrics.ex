@@ -47,7 +47,7 @@ defmodule EctoPGMQ.Metrics do
   Metrics are fetched transparently when querying queues via
   `EctoPGMQ.Queue.query/0`.
 
-  > #### Warning {: .warning}
+  > #### Read-Only Operation {: .warning}
   >
   > This query only supports read operations.
 

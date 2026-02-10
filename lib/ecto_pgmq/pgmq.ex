@@ -35,7 +35,7 @@ defmodule EctoPGMQ.PGMQ do
   Note that the filter conditions are applied to the message body, not the
   headers.
 
-  > #### Warning {: .warning}
+  > #### Experimental Feature {: .warning}
   >
   > As stated in the
   > [PGMQ docs](https://github.com/pgmq/pgmq/blob/main/docs/api/sql/functions.md#reading-messages),
@@ -150,7 +150,7 @@ defmodule EctoPGMQ.PGMQ do
   @doc """
   Converts the archive for the given queue into a partitioned table.
 
-  > #### Warning {: .warning}
+  > #### Previous Archive {: .warning}
   >
   > This function postfixes the old archive table name with `_old` and leaves
   > its contents untouched. Additional cleanup (table deletion, message
@@ -288,7 +288,7 @@ defmodule EctoPGMQ.PGMQ do
   For more information about this function, see the
   [PGMQ docs](https://github.com/pgmq/pgmq/blob/main/docs/api/sql/functions.md#create_unlogged).
 
-  > #### Warning {: .warning}
+  > #### Unlogged Tables {: .warning}
   >
   > Unlogged tables benefit from faster write operations but they risk data loss
   > if the Postgres server restarts. Use with caution.

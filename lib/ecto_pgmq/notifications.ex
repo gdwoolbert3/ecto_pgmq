@@ -62,7 +62,7 @@ defmodule EctoPGMQ.Notifications do
   @doc """
   Starts a PGMQ notification listener linked to the current process.
 
-  > #### Warning {: .warning}
+  > #### Connection Usage {: .warning}
   >
   > Each notification listener uses its own Postgres connection outside of any
   > `Ecto.Repo` connection pools. Therefore, in most cases, it's preferable to

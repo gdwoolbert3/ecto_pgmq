@@ -50,10 +50,17 @@ defmodule EctoPGMQ do
   payload type must both dump to and load from a `t:map/0` (since PGMQ stores
   message payloads in a `JSONB` column).
 
+  > #### Multiple Payload Types in a Queue {:.error}
+  >
+  > There are no guardrails in place to ensure that a single payload type is
+  > used for a given queue. Mixing multiple payload types in a single queue only
+  > works if they can all be loaded interchangably. This pattern is **NOT**
+  > recommended.
+
   Message queries with custom payload types can also created by
   `EctoPGMQ.Message.queue_query/2` and `EctoPGMQ.Message.archive_query/2`.
 
-  > #### Warning {: .warning}
+  > #### Payload Types in Ecto Queries {: .warning}
   >
   > Due to how custom payload types are applied, non-map payloads can't be
   > directly interpolated in an `Ecto.Query`. Instead, payloads must be cast
@@ -122,7 +129,7 @@ defmodule EctoPGMQ do
       iex> Enum.map(messages, & &1.id) == message_ids
       true
 
-  > #### Warning {: .warning}
+  > #### Long-Lived Message Groups {: .warning}
   >
   > If message groups are long-lived and high-volume, this method of reading can
   > effectively starve later groups. For more information, see
@@ -483,7 +490,7 @@ defmodule EctoPGMQ do
   @doc """
   Updates the given queue.
 
-  > #### Warning {: .warning}
+  > #### Unexpected Results {: .warning}
   >
   > Because the underlying tables are owned by PGMQ, this function avoids row
   > locks so as not to disturb any internal PGMQ processes. As a result, if
@@ -653,7 +660,7 @@ defmodule EctoPGMQ do
       end
 
     # We wrap read operations in a transaction so that a post-query processing
-    # failure does NOT update messages.
+    # failure (ie loading custom payloads) does NOT update messages.
     transaction(repo, fn -> repo.all(query, opts) end, opts)
   end
 
