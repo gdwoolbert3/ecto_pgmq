@@ -214,11 +214,10 @@ if Code.ensure_loaded?(Broadway) do
 
       * `:archive` to move messages from the queue to the archive.
 
-      * `:nothing` to retry messages once the visibility timeout expires
+      * `:nothing` to retry messages once the visibility timeout expires.
 
-      * `{:update_visibility_timeout, EctoPGMQ.visibility_timeout()}` to
-        retry messages when the updated `t:EctoPGMQ.visibility_timeout/0`
-        expires.
+      * `{:update_visibility_timeout, visibility_timeout}` where
+        `visibility_timeout` is an updated `t:EctoPGMQ.visibility_timeout/0`.
     """
     @type ack_action ::
             :delete

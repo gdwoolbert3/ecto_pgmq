@@ -3,6 +3,7 @@ defmodule EctoPGMQTest do
 
   alias EctoPGMQ.Metrics
   alias EctoPGMQ.Queue
+  alias EctoPGMQ.TestType
   alias EctoPGMQ.Throttle
 
   doctest EctoPGMQ, import: true
@@ -143,7 +144,7 @@ defmodule EctoPGMQTest do
 
   describe "purge_queue/3" do
     test "will purge messages from a queue", ctx do
-      message_specs = [%{"id" => 1}, %{"id" => 2}]
+      message_specs = [Message.build(%{"id" => 1}), Message.build(%{"id" => 2})]
       EctoPGMQ.send_messages(Repo, ctx.queue, message_specs)
 
       # Validate that messages are in the queue
@@ -199,7 +200,7 @@ defmodule EctoPGMQTest do
 
   describe "archive_messages/4" do
     test "will archive messages from a queue", ctx do
-      message_specs = [%{"id" => 1}, %{"id" => 2}]
+      message_specs = [Message.build(%{"id" => 1}), Message.build(%{"id" => 2})]
       message_ids = EctoPGMQ.send_messages(Repo, ctx.queue, message_specs)
 
       # Validate that messages are in the queue
@@ -219,7 +220,7 @@ defmodule EctoPGMQTest do
 
   describe "delete_messages/4" do
     test "will delete messages from a queue", ctx do
-      message_specs = [%{"id" => 1}, %{"id" => 2}]
+      message_specs = [Message.build(%{"id" => 1}), Message.build(%{"id" => 2})]
       message_ids = EctoPGMQ.send_messages(Repo, ctx.queue, message_specs)
 
       # Validate that messages are in the queue
@@ -234,7 +235,7 @@ defmodule EctoPGMQTest do
 
   describe "read_messages/5" do
     test "will read messages from a queue without grouping", ctx do
-      message_specs = [%{"id" => 1}, %{"id" => 2}]
+      message_specs = [Message.build(%{"id" => 1}), Message.build(%{"id" => 2})]
       EctoPGMQ.send_messages(Repo, ctx.queue, message_specs)
       messages = all_queue_messages(Repo, ctx.queue)
       response = EctoPGMQ.read_messages(Repo, ctx.queue, 300, 2)
@@ -248,7 +249,7 @@ defmodule EctoPGMQTest do
 
     @tag default_queue_attributes: %{message_groups?: true}
     test "will read messages from a queue with throughput-optimized grouping", ctx do
-      message_specs = [%{"id" => 1}, %{"id" => 2}]
+      message_specs = [Message.build(%{"id" => 1}), Message.build(%{"id" => 2})]
       EctoPGMQ.send_messages(Repo, ctx.queue, message_specs)
       messages = all_queue_messages(Repo, ctx.queue)
       response = EctoPGMQ.read_messages(Repo, ctx.queue, 300, 2, message_grouping: :throughput_optimized)
@@ -262,7 +263,7 @@ defmodule EctoPGMQTest do
 
     @tag default_queue_attributes: %{message_groups?: true}
     test "will read messages from a queue with round-robin grouping", ctx do
-      message_specs = [%{"id" => 1}, %{"id" => 2}]
+      message_specs = [Message.build(%{"id" => 1}), Message.build(%{"id" => 2})]
       EctoPGMQ.send_messages(Repo, ctx.queue, message_specs)
       messages = all_queue_messages(Repo, ctx.queue)
       response = EctoPGMQ.read_messages(Repo, ctx.queue, 300, 2, message_grouping: :round_robin)
@@ -275,7 +276,7 @@ defmodule EctoPGMQTest do
     end
 
     test "will read messages with a poll from a queue without grouping", ctx do
-      message_specs = [%{"id" => 1}, %{"id" => 2}]
+      message_specs = [Message.build(%{"id" => 1}), Message.build(%{"id" => 2})]
       EctoPGMQ.send_messages(Repo, ctx.queue, message_specs)
       messages = all_queue_messages(Repo, ctx.queue)
       poll_config = {Duration.new!(microsecond: {500_000, 3}), Duration.new!(second: 1)}
@@ -290,7 +291,7 @@ defmodule EctoPGMQTest do
 
     @tag default_queue_attributes: %{message_groups?: true}
     test "will read messages with a poll from a queue with throughput-optimized grouping", ctx do
-      message_specs = [%{"id" => 1}, %{"id" => 2}]
+      message_specs = [Message.build(%{"id" => 1}), Message.build(%{"id" => 2})]
       EctoPGMQ.send_messages(Repo, ctx.queue, message_specs)
       messages = all_queue_messages(Repo, ctx.queue)
       poll_config = {Duration.new!(microsecond: {500_000, 3}), Duration.new!(second: 1)}
@@ -306,7 +307,7 @@ defmodule EctoPGMQTest do
 
     @tag default_queue_attributes: %{message_groups?: true}
     test "will read messages with a poll from a queue with round-robin grouping", ctx do
-      message_specs = [%{"id" => 1}, %{"id" => 2}]
+      message_specs = [Message.build(%{"id" => 1}), Message.build(%{"id" => 2})]
       EctoPGMQ.send_messages(Repo, ctx.queue, message_specs)
       messages = all_queue_messages(Repo, ctx.queue)
       poll_config = {Duration.new!(microsecond: {500_000, 3}), Duration.new!(second: 1)}
@@ -321,7 +322,7 @@ defmodule EctoPGMQTest do
     end
 
     test "will read messages from a queue without grouping and immediately delete them", ctx do
-      message_specs = [%{"id" => 1}, %{"id" => 2}]
+      message_specs = [Message.build(%{"id" => 1}), Message.build(%{"id" => 2})]
       EctoPGMQ.send_messages(Repo, ctx.queue, message_specs)
       messages = all_queue_messages(Repo, ctx.queue)
 
@@ -339,7 +340,7 @@ defmodule EctoPGMQTest do
     end
 
     test "will read messages with a Duration visibility timeout", ctx do
-      message_specs = [%{"id" => 1}, %{"id" => 2}]
+      message_specs = [Message.build(%{"id" => 1}), Message.build(%{"id" => 2})]
       EctoPGMQ.send_messages(Repo, ctx.queue, message_specs)
       messages = all_queue_messages(Repo, ctx.queue)
       visibility_timeout = Duration.new!(second: 300)
@@ -351,11 +352,26 @@ defmodule EctoPGMQTest do
       # Validate that the response contains the expected records
       assert read_messages?(messages, response, 300, 2)
     end
+
+    test "will read messages with a custom payload type", ctx do
+      today = Date.utc_today()
+      range = Date.range(today, Date.shift(today, day: 25), 5)
+      message_specs = [Message.build(range), Message.build(range)]
+      EctoPGMQ.send_messages(Repo, ctx.queue, message_specs, payload_type: TestType)
+      messages = all_queue_messages(Repo, ctx.queue, TestType)
+      response = EctoPGMQ.read_messages(Repo, ctx.queue, 300, 2, payload_type: TestType)
+
+      # Validate that messages are no longer visible
+      assert EctoPGMQ.read_messages(Repo, ctx.queue, 300, 1) == []
+
+      # Validate that the response contains the expected records
+      assert read_messages?(messages, response, 300, 2)
+    end
   end
 
   describe "send_messages/4" do
     test "will send messages to a queue", ctx do
-      message_specs = [%{"id" => 1}, %{"id" => 2}]
+      message_specs = [Message.build(%{"id" => 1}), Message.build(%{"id" => 2})]
       message_ids = EctoPGMQ.send_messages(Repo, ctx.queue, message_specs)
 
       # Validate that all of the messages are in the queue
@@ -366,8 +382,8 @@ defmodule EctoPGMQTest do
 
     test "will send messages with groups to a queue", ctx do
       message_specs = [
-        {%{"id" => 1}, "foo"},
-        {%{"id" => 3}, nil}
+        Message.build(%{"id" => 1}, "foo"),
+        Message.build(%{"id" => 2})
       ]
 
       message_ids = EctoPGMQ.send_messages(Repo, ctx.queue, message_specs)
@@ -380,12 +396,12 @@ defmodule EctoPGMQTest do
 
     test "will send messages with groups and headers to a queue", ctx do
       message_specs = [
-        {%{"id" => 1}, "foo", %{EctoPGMQ.PGMQ.group_header() => "bar"}},
-        {%{"id" => 2}, nil, %{EctoPGMQ.PGMQ.group_header() => "bar"}},
-        {%{"id" => 3}, "foo", %{"header" => "baz"}},
-        {%{"id" => 4}, nil, %{"header" => "baz"}},
-        {%{"id" => 5}, "foo", nil},
-        {%{"id" => 6}, nil, nil}
+        Message.build(%{"id" => 1}, "foo", %{EctoPGMQ.PGMQ.group_header() => "bar"}),
+        Message.build(%{"id" => 2}, nil, %{EctoPGMQ.PGMQ.group_header() => "bar"}),
+        Message.build(%{"id" => 3}, "foo", %{"header" => "baz"}),
+        Message.build(%{"id" => 4}, nil, %{"header" => "baz"}),
+        Message.build(%{"id" => 5}, "foo"),
+        Message.build(%{"id" => 6})
       ]
 
       message_ids = EctoPGMQ.send_messages(Repo, ctx.queue, message_specs)
@@ -398,7 +414,7 @@ defmodule EctoPGMQTest do
 
     test "will send messages to a queue with a duration delay", ctx do
       delay = Duration.new!(second: 300)
-      message_specs = [%{"id" => 1}, %{"id" => 2}]
+      message_specs = [Message.build(%{"id" => 1}), Message.build(%{"id" => 2})]
       now = DateTime.utc_now()
       message_ids = EctoPGMQ.send_messages(Repo, ctx.queue, message_specs, delay: delay)
       messages = all_queue_messages(Repo, ctx.queue)
@@ -412,11 +428,23 @@ defmodule EctoPGMQTest do
                diff > 0 and diff <= 300
              end)
     end
+
+    test "will send messages with a custom payload type to a queue", ctx do
+      today = Date.utc_today()
+      range = Date.range(today, Date.shift(today, day: 25), 5)
+      message_specs = [Message.build(range), Message.build(range)]
+      message_ids = EctoPGMQ.send_messages(Repo, ctx.queue, message_specs, payload_type: TestType)
+
+      # Validate that all of the messages are in the queue
+      assert Repo
+             |> all_queue_messages(ctx.queue, TestType)
+             |> same_messages?(message_ids, message_specs)
+    end
   end
 
   describe "update_messages/5" do
     test "will update message visibility timeouts", ctx do
-      message_specs = [%{"id" => 1}, %{"id" => 2}]
+      message_specs = [Message.build(%{"id" => 1}), Message.build(%{"id" => 2})]
       message_ids = EctoPGMQ.send_messages(Repo, ctx.queue, message_specs)
       messages = all_queue_messages(Repo, ctx.queue)
       EctoPGMQ.update_messages(Repo, ctx.queue, message_ids, %{visibility_timeout: 300})

@@ -10,6 +10,8 @@ defmodule EctoPGMQ.Message do
   alias EctoPGMQ.PGMQ
   alias EctoPGMQ.Queue
 
+  require Record
+
   ################################
   # Types
   ################################
@@ -28,18 +30,40 @@ defmodule EctoPGMQ.Message do
   @typedoc "A PGMQ message ID."
   @type id :: pos_integer()
 
-  @typedoc "A PGMQ message payload."
-  @type payload :: %{optional(String.Chars.t()) => term()}
+  @typedoc """
+  A PGMQ message payload.
+
+  For more information about valid PGMQ message payloads, see
+  [Custom Payload Types](m:EctoPGMQ#custom-payload-types).
+  """
+  @type payload :: PGMQ.payload() | term()
+
+  @typedoc """
+  A PGMQ Message payload type.
+
+  This can take any of the following forms:
+
+    * `:map` to denote `t:map/0` payloads.
+
+    * A `t:module/0` that implements the `Ecto.Type` behaviour and dumps to and
+      loads from a `t:map/0`.
+
+    * `{module, opts}` where `module` is a `t:module/0` that implements the
+      `Ecto.ParameterizedType` behaviour and dumps to and loads from a `t:map/0`
+      and `opts` is a `t:keyword/0` that contains the init parameters.
+
+  For more information about custom PGMQ payloads, see
+  [Custom Payload Types](m:EctoPGMQ#custom-payload-types).
+  """
+  @type payload_type :: module() | {module(), keyword()} | :map
 
   @typedoc """
   A PGMQ message specification.
 
-  > #### Warning {: .warning}
-  >
-  > If the group is not `nil`, it will override any group that may already be
-  > specified in the headers.
+  This type is public because it is safe to inspect  but, in most cases, message
+  specifications should only be `constructed` with `build/3`.
   """
-  @type specification :: payload() | {payload(), group() | nil} | {payload(), group() | nil, headers() | nil}
+  @type specification :: record(:spec, payload: payload() | nil, group: group() | nil, headers: headers() | nil)
 
   @typedoc "A PGMQ message."
   @type t :: %__MODULE__{
@@ -49,10 +73,16 @@ defmodule EctoPGMQ.Message do
           archived_at: DateTime.t() | nil,
           visible_at: DateTime.t(),
           last_read_at: DateTime.t() | nil,
-          payload: payload(),
+          payload: payload() | nil,
           headers: headers() | nil,
           group: group() | nil
         }
+
+  ################################
+  # Private Records
+  ################################
+
+  Record.defrecordp(:spec, payload: nil, group: nil, headers: nil)
 
   ################################
   # Schema
@@ -67,32 +97,69 @@ defmodule EctoPGMQ.Message do
     field(:archived_at, :utc_datetime_usec, load_in_query: false)
     field(:visible_at, :utc_datetime_usec, source: :vt)
     field(:last_read_at, :utc_datetime_usec)
-    field(:payload, :map, source: :message)
+    field(:payload, :map, source: :message, load_in_query: false)
     field(:headers, :map)
     field(:group, :string, virtual: true)
   end
 
   ################################
-  # Query API
+  # Public API
   ################################
 
   @doc """
   Returns a query for the messages in the archive for the given queue.
 
+  ## Options
+
+  An archive message query can be built with the following options:
+
+    * `:payload_type` - An optional `t:payload_type/0` for the message payloads.
+      Defaults to `:map`.
+
   ## Examples
 
-      iex> message_ids = EctoPGMQ.send_messages(Repo, "my_queue", [%{"foo" => 1}, %{"bar" => 2}])
+      iex> message_specs = [Message.build(%{"foo" => 1})]
+      iex> message_ids = EctoPGMQ.send_messages(Repo, "my_queue", message_specs)
       iex> EctoPGMQ.archive_messages(Repo, "my_queue", message_ids)
-      iex> messages = Repo.all(archive_query("my_queue"))
-      iex> Enum.all?(messages, &is_struct(&1, EctoPGMQ.Message))
-      true
+      iex> [%Message{}] = Repo.all(archive_query("my_queue"))
   """
   @spec archive_query(Queue.name()) :: Ecto.Query.t()
-  def archive_query(queue) do
+  @spec archive_query(Queue.name(), [{:payload_type, payload_type()}]) :: Ecto.Query.t()
+  def archive_query(queue, opts \\ []) do
+    payload_ecto_type =
+      opts
+      |> Keyword.get(:payload_type, :map)
+      |> payload_type_to_ecto_type()
+
     queue
     |> PGMQ.archive_table_name()
-    |> base_query()
+    |> message_table_query(payload_ecto_type)
     |> select_merge([m], %{archived_at: m.archived_at})
+  end
+
+  @doc """
+  Constructs a message specification for the given payload, group, and headers.
+
+  > #### Warning {: .warning}
+  >
+  > If the group is not `nil`, it will override any group that may already be
+  > specified in the headers.
+  """
+  @spec build(payload() | nil) :: specification()
+  @spec build(payload() | nil, group() | nil) :: specification()
+  @spec build(payload() | nil, group() | nil, headers() | nil) :: specification()
+  def build(payload, group \\ nil, headers \\ nil)
+  def build(payload, nil, nil), do: spec(payload: payload)
+  def build(payload, group, nil), do: build(payload, group, %{})
+
+  def build(payload, nil, headers) do
+    group = Map.get(headers, PGMQ.group_header())
+    spec(payload: payload, group: group, headers: headers)
+  end
+
+  def build(payload, group, headers) do
+    headers = Map.put(headers, PGMQ.group_header(), group)
+    spec(payload: payload, group: group, headers: headers)
   end
 
   @doc """
@@ -100,69 +167,79 @@ defmodule EctoPGMQ.Message do
 
   ## Options
 
+  A queue message query can be built with the following options:
+
     * `:archived_at?` - An optional `t:boolean/0` denoting whether or not to
       select a `NULL` `:archived_at` column. This can be used to make the query
       structure match that of `archive_query/1`. Defaults to `false`.
 
+    * `:payload_type` - An optional `t:payload_type/0` for the message payloads.
+      Defaults to `:map`.
+
   ## Examples
 
-      iex> EctoPGMQ.send_messages(Repo, "my_queue", [%{"foo" => 1}, %{"bar" => 2}])
-      iex> messages = Repo.all(queue_query("my_queue"))
-      iex> Enum.all?(messages, &is_struct(&1, EctoPGMQ.Message))
-      true
+      iex> message_specs = [Message.build(%{"foo" => 1})]
+      iex> EctoPGMQ.send_messages(Repo, "my_queue", message_specs)
+      iex> [%Message{}] = Repo.all(queue_query("my_queue"))
   """
   @spec queue_query(Queue.name()) :: Ecto.Query.t()
-  @spec queue_query(Queue.name(), keyword()) :: Ecto.Query.t()
+  @spec queue_query(Queue.name(), [{:archived_at?, boolean()} | {:payload_type, payload_type()}]) :: Ecto.Query.t()
   def queue_query(queue, opts \\ []) do
-    base_query =
+    payload_ecto_type =
+      opts
+      |> Keyword.get(:payload_type, :map)
+      |> payload_type_to_ecto_type()
+
+    query =
       queue
       |> PGMQ.queue_table_name()
-      |> base_query()
+      |> message_table_query(payload_ecto_type)
 
     if Keyword.get(opts, :archived_at?, false) do
-      select_merge(base_query, %{archived_at: nil})
+      select_merge(query, %{archived_at: nil})
     else
-      base_query
+      query
     end
   end
 
   ################################
-  # Utility API
+  # Protected Utility API
   ################################
 
   @doc false
-  @spec normalize_specification(specification()) :: specification()
-  def normalize_specification(payload) when is_map(payload) do
-    {payload, nil, nil}
-  end
+  @spec to_pgmq_payloads_and_headers([specification()], payload_type()) :: {[PGMQ.payload()], [headers()]}
+  def to_pgmq_payloads_and_headers(specs, payload_type) do
+    payload_ecto_type = payload_type_to_ecto_type(payload_type)
 
-  def normalize_specification({payload, group}) do
-    {group, headers} = group_and_headers(group)
-    {payload, group, headers}
-  end
+    specs
+    |> Enum.map(fn spec ->
+      payload = spec(spec, :payload)
+      headers = spec(spec, :headers)
 
-  def normalize_specification({payload, group, headers}) do
-    {group, headers} = group_and_headers(group, headers)
-    {payload, group, headers}
+      case Ecto.Type.dump(payload_ecto_type, payload) do
+        {:ok, payload} when is_map(payload) ->
+          {payload, headers}
+
+        _ ->
+          raise ArgumentError, """
+          Unable to dump payload to map: #{inspect(payload)}
+          """
+      end
+    end)
+    |> Enum.unzip()
   end
 
   ################################
   # Private API
   ################################
 
-  defp base_query(table) do
-    PGMQ.decorate_message_query({table, __MODULE__})
+  defp payload_type_to_ecto_type({type, opts}) do
+    Ecto.ParameterizedType.init(type, opts)
   end
 
-  defp group_and_headers(group, headers \\ nil)
-  defp group_and_headers(nil, nil), do: {nil, nil}
-  defp group_and_headers(group, nil), do: group_and_headers(group, %{})
+  defp payload_type_to_ecto_type(type), do: type
 
-  defp group_and_headers(nil, headers) do
-    {Map.get(headers, PGMQ.group_header()), headers}
-  end
-
-  defp group_and_headers(group, headers) do
-    {group, Map.put(headers, PGMQ.group_header(), group)}
+  defp message_table_query(table, ecto_type) do
+    PGMQ.message_query_select({table, __MODULE__}, ecto_type)
   end
 end

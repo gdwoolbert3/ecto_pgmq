@@ -48,7 +48,7 @@ defmodule EctoPGMQ.Migrations do
   """
   @doc group: "EctoPGMQ API"
   @spec drop_queue(Queue.name()) :: :ok
-  @spec drop_queue(Queue.name(), keyword()) :: :ok
+  @spec drop_queue(Queue.name(), [PGMQ.query_opt()]) :: :ok
   def drop_queue(queue, opts \\ []) do
     Migration.execute(fn ->
       EctoPGMQ.drop_queue(Migration.repo(), queue, opts)

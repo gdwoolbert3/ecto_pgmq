@@ -1,5 +1,7 @@
 defmodule EctoPGMQ.ThrottleTest do
   use EctoPGMQ.TestCase, async: true
 
-  doctest EctoPGMQ.Throttle
+  alias EctoPGMQ.Throttle
+
+  doctest Throttle
 end

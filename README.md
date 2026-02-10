@@ -5,18 +5,32 @@
 
 An opinionated [PGMQ](https://github.com/pgmq/pgmq) client for Elixir.
 
+## Requirements
+
+The following requirements must be met to use this package in your project:
+
+  * This package requires an existing `Ecto.Repo` in order to execute PostgreSQL
+    queries. The aforementioned `Ecto.Repo` must use the
+    `Ecto.Adapters.Postgres` adapter. 
+
+  * While `EctoPGMQ.Migrations` contains helper functions for _managing_ the
+    PGMQ extension, this package does **NOT** include the PGMQ extension. For
+    additional information about installing PGMQ, see
+    [PGMQ Installation](`m:EctoPGMQ#pgmq-installation`).
+
 ## Installation
 
-This package can be installed by adding `:ecto_pgmq` to your list of
-dependencies in `mix.exs`:
+This package requires that your project is already using `Ecto` with the
+`Ecto.Adapters.Postgres` adapter. If that's the case, this package can be
+installed by adding `:ecto_pgmq` to your list of dependencies in `mix.exs`:
 
 ```elixir
 defp deps do
   [
-    # Should already be present if you're using Ecto
+    # `Ecto` and `Postgrex` should already be present
     {:ecto_sql, "~> 3.11"},
     {:postgrex, ">= 0.0.0"},
-    # Required to use the EctoPGMQ.Producer module
+    # Broadway is required to use the `EctoPGMQ.Producer` module
     {:broadway, "~> 1.0"},
     {:ecto_pgmq, "~> 1.1"}
   ]

@@ -74,8 +74,9 @@ defmodule EctoPGMQ.MixProject do
 
   defp dialyzer do
     [
-      plt_file: {:no_warn, "dialyzer/dialyzer.plt"},
-      plt_add_apps: [:ex_unit, :mix]
+      plt_add_apps: [:ex_unit, :mix],
+      plt_core_path: "priv/plts/core.plt",
+      plt_file: {:no_warn, "dialyzer/dialyzer.plt"}
     ]
   end
 

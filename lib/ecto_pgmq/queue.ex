@@ -51,9 +51,8 @@ defmodule EctoPGMQ.Queue do
 
   ## Examples
 
-      iex> queues = Repo.all(query())
-      iex> Enum.all?(queues, &is_struct(&1, EctoPGMQ.Queue))
-      true
+      iex> EctoPGMQ.create_queue(Repo, "my_queue")
+      iex> [%Queue{}] = Repo.all(query())
   """
   @spec query :: Ecto.Query.t()
   def query do

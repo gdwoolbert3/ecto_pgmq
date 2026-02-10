@@ -10,14 +10,14 @@ defmodule EctoPGMQ.ProducerTest do
     pid = :erlang.pid_to_list(self())
 
     # Validate that producer can read and acknowledge messages
-    payloads = [%{"pid" => pid}]
+    payloads = [Message.build(%{"pid" => pid})]
     [message_id] = EctoPGMQ.send_messages(Repo, ctx.queue, payloads)
 
     assert_receive {:success, %Message{id: ^message_id}}
     assert with_poll(fn -> queue_empty?(Repo, ctx.queue) end)
 
     # Validate that producer can configure acknowledgements
-    payloads = [%{"pid" => pid, "archive" => true}]
+    payloads = [Message.build(%{"pid" => pid, "archive" => true})]
     [message_id] = EctoPGMQ.send_messages(Repo, ctx.queue, payloads)
 
     assert_receive {:success, %Message{id: ^message_id}}
@@ -25,7 +25,7 @@ defmodule EctoPGMQ.ProducerTest do
     assert with_poll(fn -> archived_message_exists?(ctx.queue, message_id) end)
 
     # Validate that producer can acknowledge failed messages
-    payloads = [%{"pid" => pid, "fail" => true}]
+    payloads = [Message.build(%{"pid" => pid, "fail" => true})]
     [message_id] = EctoPGMQ.send_messages(Repo, ctx.queue, payloads)
 
     assert_receive {:failure, %Message{id: ^message_id}}
