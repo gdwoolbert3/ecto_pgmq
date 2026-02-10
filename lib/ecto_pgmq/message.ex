@@ -60,7 +60,7 @@ defmodule EctoPGMQ.Message do
   @typedoc """
   A PGMQ message specification.
 
-  This type is public because it is safe to inspect  but, in most cases, message
+  This type is public because it is safe to inspect but, in most cases, message
   specifications should only be `constructed` with `build/3`.
   """
   @type specification :: record(:spec, payload: payload() | nil, group: group() | nil, headers: headers() | nil)

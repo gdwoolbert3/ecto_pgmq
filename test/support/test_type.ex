@@ -1,6 +1,8 @@
 defmodule EctoPGMQ.TestType do
   @moduledoc """
   An `Ecto.Type` to be used for `EctoPGMQ` unit tests.
+
+  This type is effectively a lightweight `Date.Range` wrapper.
   """
 
   use Ecto.Type

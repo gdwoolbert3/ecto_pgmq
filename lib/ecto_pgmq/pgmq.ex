@@ -842,8 +842,6 @@ defmodule EctoPGMQ.PGMQ do
   @spec pop_query(Queue.name(), quantity()) :: Ecto.Query.t()
   @spec pop_query(Queue.name(), quantity(), Ecto.Type.t()) :: Ecto.Query.t()
   def pop_query(queue, quantity, payload_type \\ :map) do
-    # Prefix must be assigned in the initial query to override schema prefix and
-    # CTE name must be known at compile time
     "pop"
     |> message_query_from()
     |> message_query_select(payload_type)
