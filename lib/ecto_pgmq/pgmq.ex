@@ -761,9 +761,6 @@ defmodule EctoPGMQ.PGMQ do
   def send_batch(repo, queue, payloads, headers \\ nil, delay \\ 0, opts \\ []) do
     type = pg_type(delay)
     sql = "SELECT * FROM pgmq.send_batch($1::text, $2::jsonb[], $3::jsonb[], $4::#{type})"
-
-    # Expand short-form representation of no headers if applicable
-    headers = if is_nil(headers), do: List.duplicate(nil, length(payloads)), else: headers
     params = [queue, payloads, headers, delay]
     %Result{rows: rows} = repo.query!(sql, params, opts)
     Enum.map(rows, fn [message_id] -> message_id end)
