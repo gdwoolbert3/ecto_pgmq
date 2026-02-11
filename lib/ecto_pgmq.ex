@@ -140,9 +140,9 @@ defmodule EctoPGMQ do
   In general, FIFO message groups are more performant when the following
   conditions are met:
 
-    * There are many low-volume groups
+    * There are many low-volume groups.
 
-    * Messages are removed from the queue relatively quickly
+    * Messages are removed from the queue relatively quickly.
 
     * The queue is optimized for FIFO message group reads (see
       `EctoPGMQ.create_queue/4` and `EctoPGMQ.update_queue/4`).
