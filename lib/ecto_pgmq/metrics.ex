@@ -47,15 +47,14 @@ defmodule EctoPGMQ.Metrics do
   Metrics are fetched transparently when querying queues via
   `EctoPGMQ.Queue.query/0`.
 
-  > #### Warning {: .warning}
+  > #### Read-Only Operation {: .warning}
   >
   > This query only supports read operations.
 
   ## Examples
 
-      iex> metrics = Repo.all(query())
-      iex> Enum.all?(metrics, &is_struct(&1, EctoPGMQ.Metrics))
-      true
+      iex> EctoPGMQ.create_queue(Repo, "my_queue")
+      iex> [%Metrics{}] = Repo.all(query())
   """
   @spec query :: Ecto.Query.t()
   defdelegate query, to: EctoPGMQ.PGMQ, as: :metrics_all_query

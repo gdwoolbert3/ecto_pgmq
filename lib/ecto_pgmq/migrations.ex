@@ -48,7 +48,7 @@ defmodule EctoPGMQ.Migrations do
   """
   @doc group: "EctoPGMQ API"
   @spec drop_queue(Queue.name()) :: :ok
-  @spec drop_queue(Queue.name(), keyword()) :: :ok
+  @spec drop_queue(Queue.name(), [PGMQ.query_opt()]) :: :ok
   def drop_queue(queue, opts \\ []) do
     Migration.execute(fn ->
       EctoPGMQ.drop_queue(Migration.repo(), queue, opts)
@@ -163,7 +163,7 @@ defmodule EctoPGMQ.Migrations do
   @doc """
   Imports a PGMQ schema file in an `Ecto.Migration`.
 
-  > #### Warning {: .warning}
+  > #### Shell Utility Requirement {: .warning}
   >
   > This function leverages the same adapter callback as
   > [`mix ecto.load`](https://hexdocs.pm/ecto_sql/Mix.Tasks.Ecto.Load.html) and
@@ -199,7 +199,7 @@ defmodule EctoPGMQ.Migrations do
   @doc """
   Drops the PGMQ schema in an `Ecto.Migration`.
 
-  > #### Warning {: .warning}
+  > #### SQL-Installation Only {: .warning}
   >
   > This function should **NOT** be used if PGMQ is installed as an extension.
 

@@ -33,6 +33,7 @@ defmodule EctoPGMQ.TestCase do
     quote do
       import EctoPGMQ.TestHelpers
 
+      alias EctoPGMQ.Message
       alias EctoPGMQ.TestRepo, as: Repo
     end
   end

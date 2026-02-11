@@ -29,9 +29,10 @@ defmodule EctoPGMQ.TestHelpers do
   Returns all messages in the given queue ordered by ID.
   """
   @spec all_queue_messages(Repo.t(), Queue.name()) :: [Message.t()]
-  def all_queue_messages(repo, queue) do
+  @spec all_queue_messages(Repo.t(), Queue.name(), Message.payload_type()) :: [Message.t()]
+  def all_queue_messages(repo, queue, payload_type \\ :map) do
     queue
-    |> Message.queue_query()
+    |> Message.queue_query(payload_type: payload_type)
     |> order_by(:id)
     |> repo.all()
   end
@@ -105,11 +106,9 @@ defmodule EctoPGMQ.TestHelpers do
   def same_messages?(messages, _, specs) when length(messages) != length(specs), do: false
 
   def same_messages?(messages, ids, specs) do
-    specs = Enum.map(specs, &Message.normalize_specification/1)
-
     [ids, specs, messages]
     |> Enum.zip()
-    |> Enum.all?(fn {id, {payload, group, headers}, message} ->
+    |> Enum.all?(fn {id, {:spec, payload, group, headers}, message} ->
       match?(
         %Message{
           id: ^id,

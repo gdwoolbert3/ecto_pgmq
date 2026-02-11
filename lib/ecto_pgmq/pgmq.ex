@@ -35,7 +35,7 @@ defmodule EctoPGMQ.PGMQ do
   Note that the filter conditions are applied to the message body, not the
   headers.
 
-  > #### Warning {: .warning}
+  > #### Experimental Feature {: .warning}
   >
   > As stated in the
   > [PGMQ docs](https://github.com/pgmq/pgmq/blob/main/docs/api/sql/functions.md#reading-messages),
@@ -69,6 +69,9 @@ defmodule EctoPGMQ.PGMQ do
     * A `t:Duration.t/0` denoting a time range per partition.
   """
   @type partition_interval :: pos_integer() | Duration.t()
+
+  @typedoc "A message payload."
+  @type payload :: %{optional(String.Chars.t()) => term()}
 
   @typedoc "The time (in milliseconds) to wait between polls."
   @type poll_interval :: pos_integer()
@@ -120,19 +123,7 @@ defmodule EctoPGMQ.PGMQ do
   @type visibility_timeout :: integer()
 
   ################################
-  # Private Macros
-  ################################
-
-  defmacrop read_message_query(cte) do
-    # Prefix must be assigned in the initial query to override schema prefix and
-    # CTE name must be known at compile time, hence the usage of a macro
-    quote do
-      decorate_message_query(from(m in {unquote(cte), Message}, prefix: nil))
-    end
-  end
-
-  ################################
-  # PGMQ API
+  # Public PGMQ API
   ################################
 
   @doc """
@@ -159,7 +150,7 @@ defmodule EctoPGMQ.PGMQ do
   @doc """
   Converts the archive for the given queue into a partitioned table.
 
-  > #### Warning {: .warning}
+  > #### Previous Archive {: .warning}
   >
   > This function postfixes the old archive table name with `_old` and leaves
   > its contents untouched. Additional cleanup (table deletion, message
@@ -297,7 +288,7 @@ defmodule EctoPGMQ.PGMQ do
   For more information about this function, see the
   [PGMQ docs](https://github.com/pgmq/pgmq/blob/main/docs/api/sql/functions.md#create_unlogged).
 
-  > #### Warning {: .warning}
+  > #### Unlogged Tables {: .warning}
   >
   > Unlogged tables benefit from faster write operations but they risk data loss
   > if the Postgres server restarts. Use with caution.
@@ -461,11 +452,8 @@ defmodule EctoPGMQ.PGMQ do
   @spec pop(Repo.t(), Queue.name(), quantity()) :: [Message.t()]
   @spec pop(Repo.t(), Queue.name(), quantity(), [query_opt()]) :: [Message.t()]
   def pop(repo, queue, quantity, opts \\ []) do
-    # Prefix must be assigned in the initial query to override schema prefix and
-    # CTE name must be known at compile time
-    from(m in {"pop", Message}, prefix: nil)
-    |> decorate_message_query()
-    |> with_cte("pop", as: fragment("SELECT * FROM pgmq.pop(?::text, ?::integer)", ^queue, ^quantity))
+    queue
+    |> pop_query(quantity)
     |> repo.all(opts)
   end
 
@@ -508,18 +496,8 @@ defmodule EctoPGMQ.PGMQ do
   @spec read(Repo.t(), Queue.name(), visibility_timeout(), quantity(), conditional()) :: [Message.t()]
   @spec read(Repo.t(), Queue.name(), visibility_timeout(), quantity(), conditional(), [query_opt()]) :: [Message.t()]
   def read(repo, queue, visibility_timeout, quantity, conditional \\ %{}, opts \\ []) do
-    "read"
-    |> read_message_query()
-    |> with_cte("read",
-      as:
-        fragment(
-          "SELECT * FROM pgmq.read(?::text, ?::integer, ?::integer, ?::jsonb)",
-          ^queue,
-          ^visibility_timeout,
-          ^quantity,
-          ^conditional
-        )
-    )
+    queue
+    |> read_query(visibility_timeout, quantity, conditional)
     |> repo.all(opts)
   end
 
@@ -543,17 +521,8 @@ defmodule EctoPGMQ.PGMQ do
   @spec read_grouped(Repo.t(), Queue.name(), visibility_timeout(), quantity()) :: [Message.t()]
   @spec read_grouped(Repo.t(), Queue.name(), visibility_timeout(), quantity(), [query_opt()]) :: [Message.t()]
   def read_grouped(repo, queue, visibility_timeout, quantity, opts \\ []) do
-    "read_grouped"
-    |> read_message_query()
-    |> with_cte("read_grouped",
-      as:
-        fragment(
-          "SELECT * FROM pgmq.read_grouped(?::text, ?::integer, ?::integer)",
-          ^queue,
-          ^visibility_timeout,
-          ^quantity
-        )
-    )
+    queue
+    |> read_grouped_query(visibility_timeout, quantity)
     |> repo.all(opts)
   end
 
@@ -577,17 +546,8 @@ defmodule EctoPGMQ.PGMQ do
   @spec read_grouped_rr(Repo.t(), Queue.name(), visibility_timeout(), quantity()) :: [Message.t()]
   @spec read_grouped_rr(Repo.t(), Queue.name(), visibility_timeout(), quantity(), [query_opt()]) :: [Message.t()]
   def read_grouped_rr(repo, queue, visibility_timeout, quantity, opts \\ []) do
-    "read_grouped_rr"
-    |> read_message_query()
-    |> with_cte("read_grouped_rr",
-      as:
-        fragment(
-          "SELECT * FROM pgmq.read_grouped_rr(?::text, ?::integer, ?::integer)",
-          ^queue,
-          ^visibility_timeout,
-          ^quantity
-        )
-    )
+    queue
+    |> read_grouped_rr_query(visibility_timeout, quantity)
     |> repo.all(opts)
   end
 
@@ -644,19 +604,8 @@ defmodule EctoPGMQ.PGMQ do
         poll_interval \\ 100,
         opts \\ []
       ) do
-    "read_grouped_rr_with_poll"
-    |> read_message_query()
-    |> with_cte("read_grouped_rr_with_poll",
-      as:
-        fragment(
-          "SELECT * FROM pgmq.read_grouped_rr_with_poll(?::text, ?::integer, ?::integer, ?::integer, ?::integer)",
-          ^queue,
-          ^visibility_timeout,
-          ^quantity,
-          ^poll_timeout,
-          ^poll_interval
-        )
-    )
+    queue
+    |> read_grouped_rr_with_poll_query(visibility_timeout, quantity, poll_timeout, poll_interval)
     |> repo.all(opts)
   end
 
@@ -707,19 +656,8 @@ defmodule EctoPGMQ.PGMQ do
         poll_interval \\ 100,
         opts \\ []
       ) do
-    "read_grouped_with_poll"
-    |> read_message_query()
-    |> with_cte("read_grouped_with_poll",
-      as:
-        fragment(
-          "SELECT * FROM pgmq.read_grouped_with_poll(?::text, ?::integer, ?::integer, ?::integer, ?::integer)",
-          ^queue,
-          ^visibility_timeout,
-          ^quantity,
-          ^poll_timeout,
-          ^poll_interval
-        )
-    )
+    queue
+    |> read_grouped_with_poll_query(visibility_timeout, quantity, poll_timeout, poll_interval)
     |> repo.all(opts)
   end
 
@@ -777,22 +715,8 @@ defmodule EctoPGMQ.PGMQ do
         conditional \\ %{},
         opts \\ []
       ) do
-    # Prefix must be assigned in the initial query to override schema prefix and
-    # CTE name must be known at compile time
-    from(m in {"read_with_poll", Message}, prefix: nil)
-    |> decorate_message_query()
-    |> with_cte("read_with_poll",
-      as:
-        fragment(
-          "SELECT * FROM pgmq.read_with_poll(?::text, ?::integer, ?::integer, ?::integer, ?::integer, ?::jsonb)",
-          ^queue,
-          ^visibility_timeout,
-          ^quantity,
-          ^poll_timeout,
-          ^poll_interval,
-          ^conditional
-        )
-    )
+    queue
+    |> read_with_poll_query(visibility_timeout, quantity, poll_timeout, poll_interval, conditional)
     |> repo.all(opts)
   end
 
@@ -817,19 +741,19 @@ defmodule EctoPGMQ.PGMQ do
       iex> Enum.all?(message_ids, &is_integer/1)
       true
   """
-  @spec send_batch(Repo.t(), Queue.name(), [Message.payload()]) :: [Message.id()]
-  @spec send_batch(Repo.t(), Queue.name(), [Message.payload()], [Message.headers() | nil] | nil) :: [Message.id()]
+  @spec send_batch(Repo.t(), Queue.name(), [payload() | nil]) :: [Message.id()]
+  @spec send_batch(Repo.t(), Queue.name(), [payload() | nil], [Message.headers() | nil] | nil) :: [Message.id()]
   @spec send_batch(
           Repo.t(),
           Queue.name(),
-          [Message.payload()],
+          [payload() | nil],
           [Message.headers() | nil] | nil,
           delay()
         ) :: [Message.id()]
   @spec send_batch(
           Repo.t(),
           Queue.name(),
-          [Message.payload()],
+          [payload() | nil],
           [Message.headers() | nil] | nil,
           delay(),
           [query_opt()]
@@ -862,7 +786,7 @@ defmodule EctoPGMQ.PGMQ do
   @spec set_vt(Repo.t(), Queue.name(), [Message.id()], delay()) :: [Message.t()]
   @spec set_vt(Repo.t(), Queue.name(), [Message.id()], delay(), [query_opt()]) :: [Message.t()]
   def set_vt(repo, queue, message_ids, delay, opts \\ []) do
-    # We need to rely on lower-level functionality here because Ecto (admittedly
+    # We opt to rely on lower-level functionality here because Ecto (admittedly
     # correctly) doesn't allow dynamic fragments.
     type = pg_type(delay)
     sql = "SELECT * FROM pgmq.set_vt($1::text, $2::bigint[], $3::#{type})"
@@ -872,26 +796,20 @@ defmodule EctoPGMQ.PGMQ do
   end
 
   ################################
-  # Utility API
+  # Private Macro API
   ################################
 
-  @doc false
-  @spec archive_table_name(Queue.name()) :: String.t()
-  def archive_table_name(queue), do: "a_#{queue}"
-
-  @doc false
-  @spec decorate_message_query(Ecto.Queryable.t()) :: Ecto.Query.t()
-  def decorate_message_query(query) do
-    select_merge(query, [m], %{group: fragment("?->>?", m.headers, ^@group_header)})
+  defmacrop message_query_from(cte) do
+    # Prefix must be assigned in the initial query to override schema prefix and
+    # CTE name must be known at compile time, hence the usage of a macro
+    quote do
+      from(m in {unquote(cte), Message}, prefix: nil)
+    end
   end
 
-  @doc false
-  @spec extension :: String.t()
-  def extension, do: @extension
-
-  @doc false
-  @spec group_header :: String.t()
-  def group_header, do: @group_header
+  ################################
+  # Protected Query API
+  ################################
 
   @doc false
   @spec list_queues_query :: Ecto.Query.t()
@@ -905,10 +823,218 @@ defmodule EctoPGMQ.PGMQ do
   end
 
   @doc false
+  @spec message_query_select(Ecto.Queryable.t()) :: Ecto.Query.t()
+  @spec message_query_select(Ecto.Queryable.t(), Ecto.Type.t()) :: Ecto.Query.t()
+  def message_query_select(query, payload_type \\ :map) do
+    select_merge(query, [m], %{
+      group: fragment("?->>?", m.headers, ^@group_header),
+      payload: type(m.payload, ^payload_type)
+    })
+  end
+
+  @doc false
   @spec metrics_all_query :: Ecto.Query.t()
   def metrics_all_query do
     with_cte({"metrics_all", Metrics}, "metrics_all", as: fragment("SELECT * FROM pgmq.metrics_all()"))
   end
+
+  @doc false
+  @spec pop_query(Queue.name(), quantity()) :: Ecto.Query.t()
+  @spec pop_query(Queue.name(), quantity(), Ecto.Type.t()) :: Ecto.Query.t()
+  def pop_query(queue, quantity, payload_type \\ :map) do
+    "pop"
+    |> message_query_from()
+    |> message_query_select(payload_type)
+    |> with_cte("pop", as: fragment("SELECT * FROM pgmq.pop(?::text, ?::integer)", ^queue, ^quantity))
+  end
+
+  @doc false
+  @spec read_grouped_query(Queue.name(), visibility_timeout(), quantity()) :: Ecto.Query.t()
+  @spec read_grouped_query(Queue.name(), visibility_timeout(), quantity(), Ecto.Type.t()) :: Ecto.Query.t()
+  def read_grouped_query(queue, visibility_timeout, quantity, payload_type \\ :map) do
+    "read_grouped"
+    |> message_query_from()
+    |> message_query_select(payload_type)
+    |> with_cte("read_grouped",
+      as:
+        fragment(
+          "SELECT * FROM pgmq.read_grouped(?::text, ?::integer, ?::integer)",
+          ^queue,
+          ^visibility_timeout,
+          ^quantity
+        )
+    )
+  end
+
+  @doc false
+  @spec read_grouped_rr_query(Queue.name(), visibility_timeout(), quantity()) :: Ecto.Query.t()
+  @spec read_grouped_rr_query(Queue.name(), visibility_timeout(), quantity(), Ecto.Type.t()) :: Ecto.Query.t()
+  def read_grouped_rr_query(queue, visibility_timeout, quantity, payload_type \\ :map) do
+    "read_grouped_rr"
+    |> message_query_from()
+    |> message_query_select(payload_type)
+    |> with_cte("read_grouped_rr",
+      as:
+        fragment(
+          "SELECT * FROM pgmq.read_grouped_rr(?::text, ?::integer, ?::integer)",
+          ^queue,
+          ^visibility_timeout,
+          ^quantity
+        )
+    )
+  end
+
+  @doc false
+  @spec read_grouped_rr_with_poll_query(
+          Queue.name(),
+          visibility_timeout(),
+          quantity(),
+          poll_timeout(),
+          poll_interval()
+        ) :: Ecto.Query.t()
+  @spec read_grouped_rr_with_poll_query(
+          Queue.name(),
+          visibility_timeout(),
+          quantity(),
+          poll_timeout(),
+          poll_interval(),
+          Ecto.Type.t()
+        ) :: Ecto.Query.t()
+  def read_grouped_rr_with_poll_query(
+        queue,
+        visibility_timeout,
+        quantity,
+        poll_timeout,
+        poll_interval,
+        payload_type \\ :map
+      ) do
+    "read_grouped_rr_with_poll"
+    |> message_query_from()
+    |> message_query_select(payload_type)
+    |> with_cte("read_grouped_rr_with_poll",
+      as:
+        fragment(
+          "SELECT * FROM pgmq.read_grouped_rr_with_poll(?::text, ?::integer, ?::integer, ?::integer, ?::integer)",
+          ^queue,
+          ^visibility_timeout,
+          ^quantity,
+          ^poll_timeout,
+          ^poll_interval
+        )
+    )
+  end
+
+  @doc false
+  @spec read_grouped_with_poll_query(
+          Queue.name(),
+          visibility_timeout(),
+          quantity(),
+          poll_timeout(),
+          poll_interval()
+        ) :: Ecto.Query.t()
+  @spec read_grouped_with_poll_query(
+          Queue.name(),
+          visibility_timeout(),
+          quantity(),
+          poll_timeout(),
+          poll_interval(),
+          Ecto.Type.t()
+        ) :: Ecto.Query.t()
+  def read_grouped_with_poll_query(queue, visibility_timeout, quantity, poll_timeout, poll_interval, payload_type \\ :map) do
+    "read_grouped_with_poll"
+    |> message_query_from()
+    |> message_query_select(payload_type)
+    |> with_cte("read_grouped_with_poll",
+      as:
+        fragment(
+          "SELECT * FROM pgmq.read_grouped_with_poll(?::text, ?::integer, ?::integer, ?::integer, ?::integer)",
+          ^queue,
+          ^visibility_timeout,
+          ^quantity,
+          ^poll_timeout,
+          ^poll_interval
+        )
+    )
+  end
+
+  @doc false
+  @spec read_query(Queue.name(), visibility_timeout(), quantity(), conditional()) :: Ecto.Query.t()
+  @spec read_query(Queue.name(), visibility_timeout(), quantity(), conditional(), Ecto.Type.t()) :: Ecto.Query.t()
+  def read_query(queue, visibility_timeout, quantity, conditional, payload_type \\ :map) do
+    "read"
+    |> message_query_from()
+    |> message_query_select(payload_type)
+    |> with_cte("read",
+      as:
+        fragment(
+          "SELECT * FROM pgmq.read(?::text, ?::integer, ?::integer, ?::jsonb)",
+          ^queue,
+          ^visibility_timeout,
+          ^quantity,
+          ^conditional
+        )
+    )
+  end
+
+  @doc false
+  @spec read_with_poll_query(
+          Queue.name(),
+          visibility_timeout(),
+          quantity(),
+          poll_timeout(),
+          poll_interval(),
+          conditional()
+        ) :: Ecto.Query.t()
+  @spec read_with_poll_query(
+          Queue.name(),
+          visibility_timeout(),
+          quantity(),
+          poll_timeout(),
+          poll_interval(),
+          conditional(),
+          Ecto.Type.t()
+        ) :: Ecto.Query.t()
+  def read_with_poll_query(
+        queue,
+        visibility_timeout,
+        quantity,
+        poll_timeout,
+        poll_interval,
+        conditional,
+        payload_type \\ :map
+      ) do
+    "read_with_poll"
+    |> message_query_from()
+    |> message_query_select(payload_type)
+    |> with_cte("read_with_poll",
+      as:
+        fragment(
+          "SELECT * FROM pgmq.read_with_poll(?::text, ?::integer, ?::integer, ?::integer, ?::integer, ?::jsonb)",
+          ^queue,
+          ^visibility_timeout,
+          ^quantity,
+          ^poll_timeout,
+          ^poll_interval,
+          ^conditional
+        )
+    )
+  end
+
+  ################################
+  # Protected Utility API
+  ################################
+
+  @doc false
+  @spec archive_table_name(Queue.name()) :: String.t()
+  def archive_table_name(queue), do: "a_#{queue}"
+
+  @doc false
+  @spec extension :: String.t()
+  def extension, do: @extension
+
+  @doc false
+  @spec group_header :: String.t()
+  def group_header, do: @group_header
 
   @doc false
   @spec queue_table_name(Queue.name()) :: String.t()

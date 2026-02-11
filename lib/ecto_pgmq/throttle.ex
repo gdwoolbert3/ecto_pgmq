@@ -7,9 +7,8 @@ defmodule EctoPGMQ.Throttle do
 
   ## Examples
 
-      iex> throttles = Repo.all(EctoPGMQ.Throttle)
-      iex> Enum.all?(throttles, &is_struct(&1, EctoPGMQ.Throttle))
-      true
+      iex> EctoPGMQ.create_queue(Repo, "my_queue", %{notifications: 250})
+      iex> [%Throttle{}] = Repo.all(Throttle)
   """
 
   use Ecto.Schema

@@ -62,12 +62,14 @@ defmodule EctoPGMQ.Notifications do
   @doc """
   Starts a PGMQ notification listener linked to the current process.
 
-  > #### Warning {: .warning}
+  > #### Connection Usage {: .warning}
   >
   > Each notification listener uses its own Postgres connection outside of any
   > `Ecto.Repo` connection pools. Therefore, in most cases, it's preferable to
   > start a single listener that subscribes to multiple channels instead of
   > starting a single listener per channel.
+
+  ## Options
 
   For information about supported options, see
   `Postgrex.Notifications.start_link/1`.
@@ -91,6 +93,8 @@ defmodule EctoPGMQ.Notifications do
   {:notification, listener_pid, subscription, channel, ""}
   ```
 
+  ## Options
+
   For information about supported options, see
   `Postgrex.Notifications.listen/3`.
 
@@ -111,6 +115,8 @@ defmodule EctoPGMQ.Notifications do
   @doc """
   Unsubscribes the current process from notifications associated with the given
   listener reference.
+
+  ## Options
 
   For information about supported options, see
   `Postgrex.Notifications.unlisten/3`.

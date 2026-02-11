@@ -21,7 +21,7 @@ defmodule EctoPGMQ.PGMQPollTest do
           PGMQ.read_grouped_rr_with_poll(Repo, ctx.queue, 300, 2, 30)
         end)
 
-      message_specs = [%{"id" => 1}, %{"id" => 2}]
+      message_specs = [Message.build(%{"id" => 1}), Message.build(%{"id" => 2})]
       message_ids = EctoPGMQ.send_messages(Repo, ctx.queue, message_specs)
 
       # Wait up to 5 seconds for a response
@@ -40,7 +40,7 @@ defmodule EctoPGMQ.PGMQPollTest do
           PGMQ.read_grouped_with_poll(Repo, ctx.queue, 300, 3, 30)
         end)
 
-      message_specs = [%{"id" => 1}, %{"id" => 2}]
+      message_specs = [Message.build(%{"id" => 1}), Message.build(%{"id" => 2})]
       message_ids = EctoPGMQ.send_messages(Repo, ctx.queue, message_specs)
 
       # Wait up to 5 seconds for a response
@@ -59,7 +59,7 @@ defmodule EctoPGMQ.PGMQPollTest do
           PGMQ.read_with_poll(Repo, ctx.queue, 300, 3, 30)
         end)
 
-      message_specs = [%{"id" => 1}, %{"id" => 2}]
+      message_specs = [Message.build(%{"id" => 1}), Message.build(%{"id" => 2})]
       message_ids = EctoPGMQ.send_messages(Repo, ctx.queue, message_specs)
 
       # Wait up to 5 seconds for a response
