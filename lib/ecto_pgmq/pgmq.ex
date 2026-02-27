@@ -12,14 +12,18 @@ defmodule EctoPGMQ.PGMQ do
   All of the functions in this module support a common set of query options.
 
   For a detailed description of these options, see `t:query_opt/0`.
+
+  TODO(Gordon) - relocate message routing information to Binding module
   """
 
   import Ecto.Query
 
   alias Ecto.Repo
+  alias EctoPGMQ.Binding
   alias EctoPGMQ.Message
   alias EctoPGMQ.Metrics
   alias EctoPGMQ.Queue
+  alias EctoPGMQ.Throttle
   alias Postgrex.Result
 
   @group_header "x-pgmq-group"
@@ -98,6 +102,9 @@ defmodule EctoPGMQ.PGMQ do
   """
   @type query_opt :: {:log, boolean()} | {:timeout, timeout()}
 
+  @typedoc "A map of queues and the IDs of the messages that were sent to them."
+  @type queue_message_ids :: %{optional(Queue.name()) => [Message.id()]}
+
   @typedoc """
   The interval at which old partitions should be dropped.
 
@@ -108,6 +115,27 @@ defmodule EctoPGMQ.PGMQ do
     * A `t:Duration.t/0` denoting a total time range to retain.
   """
   @type retention_interval :: pos_integer() | Duration.t()
+
+  @typedoc """
+  A PGMQ routing key.
+
+  Routing keys must meet the following conditions:
+
+    * Must only contain alphanumeric characters, dots (`.`), hyphens (`-`), and
+      underscores (`_`).
+
+    * Cannot start with a dot.
+
+    * Cannot contain consecutive dots.
+
+    * Cannot be longer than 255 characters.
+
+  Routing keys can be validated with `validate_routing_key/3`.
+
+  For more information about message routing, see
+  [Message Routing](`m:EctoPGMQ#message-routing`).
+  """
+  @type routing_key :: String.t()
 
   @typedoc """
   The minimum time (in milliseconds) between notifications.
@@ -143,6 +171,29 @@ defmodule EctoPGMQ.PGMQ do
   def archive(repo, queue, message_ids, opts \\ []) do
     sql = "SELECT * FROM pgmq.archive($1::text, $2::bigint[])"
     params = [queue, message_ids]
+    repo.query!(sql, params, opts)
+    :ok
+  end
+
+  @doc """
+  Binds the given queue to the given pattern.
+
+  For more information about message routing, see
+  [Message Routing](`m:EctoPGMQ#message-routing`).
+
+  For more information about this function, see the
+  [PGMQ docs](https://github.com/pgmq/pgmq/blob/main/docs/topics.md#pgmqbind_topicpattern-queue_name).
+
+  ## Examples
+
+      iex> bind_topic(Repo, "#", "my_queue")
+      :ok
+  """
+  @spec bind_topic(Repo.t(), Binding.pattern(), Queue.name()) :: :ok
+  @spec bind_topic(Repo.t(), Binding.pattern(), Queue.name(), [query_opt()]) :: :ok
+  def bind_topic(repo, pattern, queue, opts \\ []) do
+    sql = "SELECT pgmq.bind_topic($1::text, $2::text)"
+    params = [pattern, queue]
     repo.query!(sql, params, opts)
     :ok
   end
@@ -338,6 +389,7 @@ defmodule EctoPGMQ.PGMQ do
 
   ## Examples
 
+      iex> enable_notify_insert(Repo, "my_queue")
       iex> disable_notify_insert(Repo, "my_queue")
       :ok
   """
@@ -394,28 +446,65 @@ defmodule EctoPGMQ.PGMQ do
   end
 
   @doc """
+  Lists all insert notification throttles.
+
+  For more information about notifications, see `EctoPGMQ.Notifications`.
+
+  For more information about this function, see the
+  [PGMQ docs](https://github.com/pgmq/pgmq/blob/main/docs/api/sql/functions.md#list_notify_insert_throttles).
+
+  ## Examples
+
+      iex> enable_notify_insert(Repo, "my_queue")
+      iex> [%Throttle{} | _] = list_notify_insert_throttles(Repo)
+  """
+  @spec list_notify_insert_throttles(Repo.t()) :: [Throttle.t()]
+  @spec list_notify_insert_throttles(Repo.t(), [query_opt()]) :: [Throttle.t()]
+  def list_notify_insert_throttles(repo, opts \\ []) do
+    repo.all(list_notify_insert_throttles_query(), opts)
+  end
+
+  @doc """
   Lists all queues.
 
   Because this function naively wraps the corresponding PGMQ function, the
-  `:metrics` and `:notifications` fields in the returned `EctoPGMQ.Queue` structs
-  will not be populated.
+  `:bindings`, `:metrics` and `:notifications` fields in the returned
+  `EctoPGMQ.Queue` structs will not be populated.
 
   For more information about this function, see the
   [PGMQ docs](https://github.com/pgmq/pgmq/blob/main/docs/api/sql/functions.md#list_queues).
 
   ## Examples
 
-      iex> queues = list_queues(Repo)
-      iex> Enum.all?(queues, &is_struct(&1, EctoPGMQ.Queue))
-      true
+      iex> [%Queue{} | _] = list_queues(Repo)
   """
   @spec list_queues(Repo.t()) :: [Queue.t()]
   @spec list_queues(Repo.t(), [query_opt()]) :: [Queue.t()]
   def list_queues(repo, opts \\ []) do
-    # Mask `Ecto.Association.NotLoaded` struct
+    # Mask `Ecto.Association.NotLoaded` structs
     list_queues_query()
-    |> select_merge([q], %{notifications: nil})
+    |> select_merge(%{bindings: [], metrics: nil, notifications: nil})
     |> repo.all(opts)
+  end
+
+  @doc """
+  Lists all topic bindings.
+
+  For more information about message routing, see
+  [Message Routing](`m:EctoPGMQ#message-routing`).
+
+  For more information about this function, see the
+  [PGMQ docs](https://github.com/pgmq/pgmq/blob/main/docs/topics.md#pgmqlist_topic_bindings).
+
+  ## Examples
+
+      iex> bind_topic(Repo, "#", "my_queue")
+      iex> [%Binding{} | _] = list_topic_bindings(Repo)
+  """
+  @spec list_topic_bindings(Repo.t()) :: [Binding.t()]
+  @spec list_topic_bindings(Repo.t(), [query_opt()]) :: [Binding.t()]
+  def list_topic_bindings(repo, opts \\ []) do
+    repo.all(list_topic_bindings_query(), opts)
   end
 
   @doc """
@@ -426,9 +515,7 @@ defmodule EctoPGMQ.PGMQ do
 
   ## Examples
 
-      iex> metrics = metrics_all(Repo)
-      iex> Enum.all?(metrics, &is_struct(&1, EctoPGMQ.Metrics))
-      true
+      iex> [%Metrics{} | _] = metrics_all(Repo)
   """
   @spec metrics_all(Repo.t()) :: [Metrics.t()]
   @spec metrics_all(Repo.t(), [query_opt()]) :: [Metrics.t()]
@@ -445,9 +532,7 @@ defmodule EctoPGMQ.PGMQ do
   ## Examples
 
       iex> send_batch(Repo, "my_queue", [%{"foo" => 1}])
-      iex> [message] = pop(Repo, "my_queue", 1)
-      iex> match?(%EctoPGMQ.Message{reads: 0}, message)
-      true
+      iex> [%Message{reads: 0}] = pop(Repo, "my_queue", 1)
   """
   @spec pop(Repo.t(), Queue.name(), quantity()) :: [Message.t()]
   @spec pop(Repo.t(), Queue.name(), quantity(), [query_opt()]) :: [Message.t()]
@@ -466,9 +551,9 @@ defmodule EctoPGMQ.PGMQ do
 
   ## Examples
 
-      iex> send_batch(Repo, "my_queue", [%{"foo" => 1}, %{"bar" => 2}])
+      iex> send_batch(Repo, "my_queue", [%{"foo" => 1}])
       iex> purge_queue(Repo, "my_queue")
-      2
+      1
   """
   @spec purge_queue(Repo.t(), Queue.name()) :: purged_messages()
   @spec purge_queue(Repo.t(), Queue.name(), [query_opt()]) :: purged_messages()
@@ -488,9 +573,7 @@ defmodule EctoPGMQ.PGMQ do
   ## Examples
 
       iex> send_batch(Repo, "my_queue", [%{"foo" => 1}])
-      iex> [message] = read(Repo, "my_queue", 5, 1)
-      iex> match?(%EctoPGMQ.Message{reads: 1}, message)
-      true
+      iex> [%Message{reads: 1}] = read(Repo, "my_queue", 5, 1)
   """
   @spec read(Repo.t(), Queue.name(), visibility_timeout(), quantity()) :: [Message.t()]
   @spec read(Repo.t(), Queue.name(), visibility_timeout(), quantity(), conditional()) :: [Message.t()]
@@ -514,9 +597,7 @@ defmodule EctoPGMQ.PGMQ do
   ## Examples
 
       iex> send_batch(Repo, "my_queue", [%{"foo" => 1}])
-      iex> [message] = read_grouped(Repo, "my_queue", 5, 1)
-      iex> match?(%EctoPGMQ.Message{reads: 1}, message)
-      true
+      iex> [%Message{reads: 1}] = read_grouped(Repo, "my_queue", 5, 1)
   """
   @spec read_grouped(Repo.t(), Queue.name(), visibility_timeout(), quantity()) :: [Message.t()]
   @spec read_grouped(Repo.t(), Queue.name(), visibility_timeout(), quantity(), [query_opt()]) :: [Message.t()]
@@ -539,9 +620,7 @@ defmodule EctoPGMQ.PGMQ do
   ## Examples
 
       iex> send_batch(Repo, "my_queue", [%{"foo" => 1}])
-      iex> [message] = read_grouped_rr(Repo, "my_queue", 5, 1)
-      iex> match?(%EctoPGMQ.Message{reads: 1}, message)
-      true
+      iex> [%Message{reads: 1}] = read_grouped_rr(Repo, "my_queue", 5, 1)
   """
   @spec read_grouped_rr(Repo.t(), Queue.name(), visibility_timeout(), quantity()) :: [Message.t()]
   @spec read_grouped_rr(Repo.t(), Queue.name(), visibility_timeout(), quantity(), [query_opt()]) :: [Message.t()]
@@ -566,9 +645,7 @@ defmodule EctoPGMQ.PGMQ do
   ## Examples
 
       iex> send_batch(Repo, "my_queue", [%{"foo" => 1}])
-      iex> [message] = read_grouped_rr_with_poll(Repo, "my_queue", 5, 1, 5, 500)
-      iex> match?(%EctoPGMQ.Message{reads: 1}, message)
-      true
+      iex> [%Message{reads: 1}] = read_grouped_rr_with_poll(Repo, "my_queue", 5, 1, 5, 500)
   """
   @spec read_grouped_rr_with_poll(Repo.t(), Queue.name(), visibility_timeout(), quantity()) :: [Message.t()]
   @spec read_grouped_rr_with_poll(
@@ -624,9 +701,7 @@ defmodule EctoPGMQ.PGMQ do
   ## Examples
 
       iex> send_batch(Repo, "my_queue", [%{"foo" => 1}])
-      iex> [message] = read_grouped_with_poll(Repo, "my_queue", 5, 1, 5, 500)
-      iex> match?(%EctoPGMQ.Message{reads: 1}, message)
-      true
+      iex> [%Message{reads: 1}] = read_grouped_with_poll(Repo, "my_queue", 5, 1, 5, 500)
   """
   @spec read_grouped_with_poll(Repo.t(), Queue.name(), visibility_timeout(), quantity()) :: [Message.t()]
   @spec read_grouped_with_poll(Repo.t(), Queue.name(), visibility_timeout(), quantity(), poll_timeout()) :: [Message.t()]
@@ -672,9 +747,7 @@ defmodule EctoPGMQ.PGMQ do
   ## Examples
 
       iex> send_batch(Repo, "my_queue", [%{"foo" => 1}])
-      iex> [message] = read_with_poll(Repo, "my_queue", 5, 1, 5, 500)
-      iex> match?(%EctoPGMQ.Message{reads: 1}, message)
-      true
+      iex> [%Message{reads: 1}] = read_with_poll(Repo, "my_queue", 5, 1, 5, 500)
   """
   @spec read_with_poll(Repo.t(), Queue.name(), visibility_timeout(), quantity()) :: [Message.t()]
   @spec read_with_poll(Repo.t(), Queue.name(), visibility_timeout(), quantity(), poll_timeout()) :: [Message.t()]
@@ -723,22 +796,18 @@ defmodule EctoPGMQ.PGMQ do
   @doc """
   Sends the given messages to the given queue.
 
-  The `headers` arg defaults to `nil`, which is a shorthand for `NULL` headers
-  for all messages. If a list is given for the `headers` arg, the length of the
-  list must match the length of the given list of messages.
-
   For more information about this function, see the
   [PGMQ docs](https://github.com/pgmq/pgmq/blob/main/docs/api/sql/functions.md#send_batch).
 
   ## Examples
 
-      iex> message_ids = send_batch(Repo, "my_queue", [%{"foo" => 1}, %{"bar" => 2}])
-      iex> Enum.all?(message_ids, &is_integer/1)
+      iex> [message_id] = send_batch(Repo, "my_queue", [%{"foo" => 1}])
+      iex> is_integer(message_id)
       true
 
       iex> delay = DateTime.utc_now()
-      iex> message_ids = send_batch(Repo, "my_queue", [%{"foo" => 1}, %{"bar" => 2}], nil, delay)
-      iex> Enum.all?(message_ids, &is_integer/1)
+      iex> [message_id] = send_batch(Repo, "my_queue", [%{"foo" => 1}], nil, delay)
+      iex> is_integer(message_id)
       true
   """
   @spec send_batch(Repo.t(), Queue.name(), [payload() | nil]) :: [Message.id()]
@@ -767,6 +836,58 @@ defmodule EctoPGMQ.PGMQ do
   end
 
   @doc """
+  Sends the given messages with the given routing key.
+
+  For more information about message routing, see
+  [Message Routing](`m:EctoPGMQ#message-routing`).
+
+  For more information about this function, see the
+  [PGMQ docs](https://github.com/pgmq/pgmq/blob/main/docs/topics.md#pgmqsend_batch_topicrouting_key-msgs-headers-delay).
+
+  ## Examples
+
+      iex> bind_topic(Repo, "#", "my_queue")
+      iex> %{"my_queue" => [message_id]} = send_batch_topic(Repo, "my.routing.key", [%{"foo" => 1}])
+      iex> is_integer(message_id)
+      true
+
+      iex> delay = DateTime.utc_now()
+      iex> bind_topic(Repo, "#", "my_queue")
+      iex> %{"my_queue" => [message_id]} = send_batch_topic(Repo, "my.routing.key", [%{"foo" => 1}], nil, delay)
+      iex> is_integer(message_id)
+      true
+  """
+  @spec send_batch_topic(Repo.t(), routing_key(), [payload() | nil]) :: queue_message_ids()
+  @spec send_batch_topic(
+          Repo.t(),
+          routing_key(),
+          [payload() | nil],
+          [Message.headers() | nil] | nil
+        ) :: queue_message_ids()
+  @spec send_batch_topic(
+          Repo.t(),
+          routing_key(),
+          [payload() | nil],
+          [Message.headers() | nil] | nil,
+          delay()
+        ) :: queue_message_ids()
+  @spec send_batch_topic(
+          Repo.t(),
+          routing_key(),
+          [payload() | nil],
+          [Message.headers() | nil] | nil,
+          delay(),
+          [query_opt()]
+        ) :: queue_message_ids()
+  def send_batch_topic(repo, routing_key, payloads, headers \\ nil, delay \\ 0, opts \\ []) do
+    type = pg_type(delay)
+    sql = "SELECT * FROM pgmq.send_batch_topic($1::text, $2::jsonb[], $3::jsonb[], $4::#{type})"
+    params = [routing_key, payloads, headers, delay]
+    %Result{rows: rows} = repo.query!(sql, params, opts)
+    Enum.group_by(rows, fn [queue, _] -> queue end, fn [_, id] -> id end)
+  end
+
+  @doc """
   Sets the visibility timeout of the given messages in the given queue.
 
   For more information about this function, see the
@@ -792,6 +913,134 @@ defmodule EctoPGMQ.PGMQ do
     Enum.map(result.rows, &repo.load(Message, {result.columns, &1}))
   end
 
+  @doc """
+  Returns all of the bindings that match the given routing key.
+
+  Because this function naively wraps the corresponding PGMQ function, the
+  `:bound_at` field in the returned `EctoPGMQ.Binding` structs will not be
+  populated.
+
+  For more information about message routing, see
+  [Message Routing](`m:EctoPGMQ#message-routing`).
+
+  For more information about this function, see the
+  [PGMQ docs](https://github.com/pgmq/pgmq/blob/main/docs/topics.md#pgmqtest_routingrouting_key).
+
+  ## Examples
+
+      iex> bind_topic(Repo, "#", "my_queue")
+      iex> [%Binding{pattern: "#", queue: "my_queue"}] = test_routing(Repo, "my.routing.key")
+  """
+  @spec test_routing(Repo.t(), routing_key()) :: [Binding.t()]
+  @spec test_routing(Repo.t(), routing_key(), [query_opt()]) :: [Binding.t()]
+  def test_routing(repo, routing_key, opts \\ []) do
+    {"test_routing", Binding}
+    |> with_cte("test_routing", as: fragment("SELECT * FROM pgmq.test_routing(?::text)", ^routing_key))
+    |> repo.all(opts)
+  end
+
+  @doc """
+  Unbinds the given queue from the given pattern.
+
+  For more information about message routing, see
+  [Message Routing](`m:EctoPGMQ#message-routing`).
+
+  For more information about this function, see the
+  [PGMQ docs](https://github.com/pgmq/pgmq/blob/main/docs/topics.md#pgmqunbind_topicpattern-queue_name).
+
+  ## Examples
+
+      iex> bind_topic(Repo, "#", "my_queue")
+      iex> unbind_topic(Repo, "#", "my_queue")
+      :ok
+  """
+  @spec unbind_topic(Repo.t(), Binding.pattern(), Queue.name()) :: :ok
+  @spec unbind_topic(Repo.t(), Binding.pattern(), Queue.name(), [query_opt()]) :: :ok
+  def unbind_topic(repo, pattern, queue, opts \\ []) do
+    sql = "SELECT pgmq.unbind_topic($1::text, $2::text)"
+    params = [pattern, queue]
+    repo.query!(sql, params, opts)
+    :ok
+  end
+
+  @doc """
+  Updates the insert notification throttle for the given queue.
+
+  For more information about notifications, see `EctoPGMQ.Notifications`.
+
+  For more information about this function, see the
+  [PGMQ docs](https://github.com/pgmq/pgmq/blob/main/docs/api/sql/functions.md#update_notify_insert).
+
+  ## Examples
+
+      iex> enable_notify_insert(Repo, "my_queue")
+      iex> update_notify_insert(Repo, "my_queue", 500)
+      :ok
+  """
+  @spec update_notify_insert(Repo.t(), Queue.name(), throttle_interval()) :: :ok
+  @spec update_notify_insert(Repo.t(), Queue.name(), throttle_interval(), [query_opt()]) :: :ok
+  def update_notify_insert(repo, queue, throttle_interval, opts \\ []) do
+    sql = "SELECT pgmq.update_notify_insert($1::text, $2::integer)"
+    params = [queue, throttle_interval]
+    repo.query!(sql, params, opts)
+    :ok
+  end
+
+  @doc """
+  Validates the given routing key.
+
+  > #### Invalid Routing Key {: .warning}
+  >
+  > This function will raise a `Postgrex.Error` if an invalid routing key is
+  > given.
+
+  For more information about message routing, see
+  [Message Routing](`m:EctoPGMQ#message-routing`).
+
+  For more information about this function, see the
+  [PGMQ docs](https://github.com/pgmq/pgmq/blob/main/docs/topics.md#pgmqvalidate_routing_keyrouting_key).
+
+  ## Examples
+
+      iex> validate_routing_key(Repo, "my.routing.key")
+      :ok
+  """
+  @spec validate_routing_key(Repo.t(), routing_key()) :: :ok
+  @spec validate_routing_key(Repo.t(), routing_key(), [query_opt()]) :: :ok
+  def validate_routing_key(repo, routing_key, opts \\ []) do
+    sql = "SELECT pgmq.validate_routing_key($1::text)"
+    params = [routing_key]
+    repo.query!(sql, params, opts)
+    :ok
+  end
+
+  @doc """
+  Validates the given binding pattern.
+
+  > #### Invalid Pattern {: .warning}
+  >
+  > This function will raise a `Postgrex.Error` if an invalid pattern is given.
+
+  For more information about message routing, see
+  [Message Routing](`m:EctoPGMQ#message-routing`).
+
+  For more information about this function, see the
+  [PGMQ docs](https://github.com/pgmq/pgmq/blob/main/docs/topics.md#pgmqvalidate_topic_patternpattern).
+
+  ## Examples
+
+      iex> validate_topic_pattern(Repo, "#")
+      :ok
+  """
+  @spec validate_topic_pattern(Repo.t(), Binding.pattern()) :: :ok
+  @spec validate_topic_pattern(Repo.t(), Binding.pattern(), [query_opt()]) :: :ok
+  def validate_topic_pattern(repo, pattern, opts \\ []) do
+    sql = "SELECT pgmq.validate_topic_pattern($1::text)"
+    params = [pattern]
+    repo.query!(sql, params, opts)
+    :ok
+  end
+
   ################################
   # Private Macro API
   ################################
@@ -809,14 +1058,32 @@ defmodule EctoPGMQ.PGMQ do
   ################################
 
   @doc false
+  @spec list_notify_insert_throttles_query :: Ecto.Query.t()
+  def list_notify_insert_throttles_query do
+    with_cte(
+      {"list_notify_insert_throttles", Throttle},
+      "list_notify_insert_throttles",
+      as: fragment("SELECT * FROM pgmq.list_notify_insert_throttles()")
+    )
+  end
+
+  @doc false
   @spec list_queues_query :: Ecto.Query.t()
   def list_queues_query do
     with_cte(
-      # Prefix must be assigned in the initial query to override schema prefix
-      from(q in {"list_queues", Queue}, prefix: nil),
+      {"list_queues", Queue},
       "list_queues",
       as: fragment("SELECT * FROM pgmq.list_queues()")
     )
+  end
+
+  @doc false
+  @spec list_topic_bindings_query :: Ecto.Query.t()
+  def list_topic_bindings_query do
+    # Manually load `:bound_at` since it's not loaded by default
+    {"list_topic_bindings", Binding}
+    |> with_cte("list_topic_bindings", as: fragment("SELECT * FROM pgmq.list_topic_bindings()"))
+    |> select_merge([b], %{bound_at: b.bound_at})
   end
 
   @doc false

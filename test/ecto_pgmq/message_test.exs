@@ -1,11 +1,15 @@
 defmodule EctoPGMQ.MessageTest do
   use EctoPGMQ.TestCase, async: true
 
+  import Ecto.Query
+
   alias EctoPGMQ.TestType
 
   require Ecto.Query
 
   doctest Message, import: true
+
+  # TODO(Gordon) - test archived_at filtering?
 
   describe "archive_query/1" do
     test "will return a query for archived messages", ctx do
@@ -30,6 +34,21 @@ defmodule EctoPGMQ.MessageTest do
       # Validate that all of the messages are returned by the query
       assert ctx.queue
              |> Message.archive_query(payload_type: TestType)
+             |> Repo.all()
+             |> same_messages?(message_ids, message_specs)
+    end
+
+    test "will allow filtering on payload field with a custom payload type", ctx do
+      today = Date.utc_today()
+      range = Date.range(today, Date.shift(today, day: 25), 5)
+      message_specs = [Message.build(range), Message.build(range)]
+      message_ids = EctoPGMQ.send_messages(Repo, ctx.queue, message_specs, payload_type: TestType)
+      EctoPGMQ.archive_messages(Repo, ctx.queue, message_ids)
+
+      # Validate that custom payload can be used in query
+      assert ctx.queue
+             |> Message.archive_query(payload_type: TestType)
+             |> where([m], m.payload == type(^range, TestType))
              |> Repo.all()
              |> same_messages?(message_ids, message_specs)
     end
@@ -72,6 +91,20 @@ defmodule EctoPGMQ.MessageTest do
       # Validate that all of the messages are returned by the query
       assert ctx.queue
              |> Message.queue_query(payload_type: TestType)
+             |> Repo.all()
+             |> same_messages?(message_ids, message_specs)
+    end
+
+    test "will allow filtering on payload field with a custom payload type", ctx do
+      today = Date.utc_today()
+      range = Date.range(today, Date.shift(today, day: 25), 5)
+      message_specs = [Message.build(range), Message.build(range)]
+      message_ids = EctoPGMQ.send_messages(Repo, ctx.queue, message_specs, payload_type: TestType)
+
+      # Validate that custom payload can be used in query
+      assert ctx.queue
+             |> Message.queue_query(payload_type: TestType)
+             |> where([m], m.payload == type(^range, TestType))
              |> Repo.all()
              |> same_messages?(message_ids, message_specs)
     end

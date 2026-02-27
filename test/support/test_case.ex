@@ -25,6 +25,8 @@ defmodule EctoPGMQ.TestCase do
 
   @default_queue "my_queue"
 
+  # TODO(Gordon) - return entire queue struct instead of just name
+
   ################################
   # CaseTemplate Callbacks
   ################################

@@ -1,11 +1,23 @@
 defmodule EctoPGMQ.Queue do
   @moduledoc """
   Schema for PGMQ queues.
+
+  > #### Read-Only {: .warning}
+  >
+  > This schema should be treated as read-only.
+
+  TODO(Gordon) - determine if queue is optimized for FIFO reads in query?
   """
 
   use Ecto.Schema
 
-  import Ecto.Query, only: [join: 5, preload: 2, select: 3]
+  import Ecto.Query, only: [preload: 2]
+
+  alias EctoPGMQ.Binding
+  alias EctoPGMQ.Metrics
+  alias EctoPGMQ.Throttle
+
+  # TODO(Gordon) - alias necessary modules
 
   ################################
   # Types
@@ -20,8 +32,9 @@ defmodule EctoPGMQ.Queue do
           created_at: DateTime.t(),
           partitioned?: boolean(),
           unlogged?: boolean(),
-          metrics: EctoPGMQ.Metrics.t() | nil,
-          notifications: EctoPGMQ.Throttle.t() | nil
+          metrics: Metrics.t() | nil,
+          notifications: Throttle.t() | nil,
+          bindings: [Binding.t()]
         }
 
   ################################
@@ -34,9 +47,10 @@ defmodule EctoPGMQ.Queue do
     field(:created_at, :utc_datetime_usec)
     field(:partitioned?, :boolean, source: :is_partitioned)
     field(:unlogged?, :boolean, source: :is_unlogged)
-    field(:metrics, :map, virtual: true)
 
-    has_one(:notifications, EctoPGMQ.Throttle, foreign_key: :queue, references: :name)
+    has_one(:metrics, Metrics, foreign_key: :queue, references: :name)
+    has_one(:notifications, Throttle, foreign_key: :queue, references: :name)
+    has_many(:bindings, Binding, foreign_key: :queue, references: :name)
   end
 
   ################################
@@ -46,19 +60,20 @@ defmodule EctoPGMQ.Queue do
   @doc """
   Returns a query for all queues.
 
-  The returned query joins and populates queue metrics and queue notification
+  The returned query joins and populates bindings, metrics, and notification
   throttles.
 
   ## Examples
 
-      iex> EctoPGMQ.create_queue(Repo, "my_queue")
-      iex> [%Queue{}] = Repo.all(query())
+      iex> [%Queue{} | _] = Repo.all(query())
   """
   @spec query :: Ecto.Query.t()
   def query do
-    EctoPGMQ.PGMQ.list_queues_query()
-    |> preload(:notifications)
-    |> join(:left, [q], m in subquery(EctoPGMQ.PGMQ.metrics_all_query()), on: q.name == m.queue)
-    |> select([q, m], %{q | metrics: m})
+    preload(
+      EctoPGMQ.PGMQ.list_queues_query(),
+      bindings: ^Binding.query(),
+      metrics: ^Metrics.query(),
+      notifications: ^Throttle.query()
+    )
   end
 end

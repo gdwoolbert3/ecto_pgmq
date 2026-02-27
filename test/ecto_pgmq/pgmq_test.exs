@@ -3,6 +3,8 @@ defmodule EctoPGMQ.PGMQTest do
 
   import Ecto.Query
 
+  alias EctoPGMQ.Binding
+  alias EctoPGMQ.DurationType
   alias EctoPGMQ.Metrics
   alias EctoPGMQ.PGMQ
   alias EctoPGMQ.Queue
@@ -27,6 +29,29 @@ defmodule EctoPGMQ.PGMQTest do
       assert Repo
              |> all_archive_messages(ctx.queue)
              |> same_messages?(message_ids, message_specs)
+    end
+  end
+
+  describe "bind_topic/4" do
+    test "will bind a queue to a routing key pattern", ctx do
+      queue = ctx.queue
+
+      # Validate that queue has bindings
+      assert %Queue{bindings: []} = EctoPGMQ.get_queue(Repo, queue)
+
+      PGMQ.bind_topic(Repo, "#", queue)
+
+      # Validate that queue has the expected bindings
+      assert %Queue{
+               bindings: [
+                 %Binding{
+                   queue: ^queue,
+                   pattern: "#",
+                   regex: %Regex{},
+                   bound_at: %DateTime{}
+                 }
+               ]
+             } = EctoPGMQ.get_queue(Repo, queue)
     end
   end
 
@@ -201,6 +226,21 @@ defmodule EctoPGMQ.PGMQTest do
     end
   end
 
+  describe "list_notify_insert_throttles/2" do
+    @describetag :no_default_queue
+
+    test "will list all notification throttles" do
+      queue_1 = EctoPGMQ.create_queue(Repo, "my_queue_1", %{notifications: 250})
+      queue_2 = EctoPGMQ.create_queue(Repo, "my_queue_2", %{notifications: 250})
+      response = PGMQ.list_notify_insert_throttles(Repo)
+
+      # Validate that the response contains the expected records
+      assert [queue_1, queue_2]
+             |> Enum.map(fn queue -> queue.notifications end)
+             |> same_elements?(response)
+    end
+  end
+
   describe "list_queues/2" do
     @describetag :no_default_queue
 
@@ -213,6 +253,25 @@ defmodule EctoPGMQ.PGMQTest do
       assert [queue_1, queue_2]
              |> Enum.map(fn queue -> %{queue | metrics: nil, notifications: nil} end)
              |> same_elements?(response)
+    end
+  end
+
+  describe "list_topic_bindings/2" do
+    @describetag :no_default_queue
+
+    test "will list all queue bindings" do
+      queue_1 = EctoPGMQ.create_queue(Repo, "my_queue_1", %{bindings: ["foo.*", "bar.*"]})
+      queue_2 = EctoPGMQ.create_queue(Repo, "my_queue_2", %{bindings: ["bar.*", "baz.*"]})
+      response = PGMQ.list_topic_bindings(Repo)
+
+      # Validate that the response contains the expected records
+      # Note that direct regex comparison will often fail so we instead compare
+      # the regex sources. For more information, see
+      # https://hexdocs.pm/elixir/Regex.html.
+      assert [queue_1, queue_2]
+             |> Enum.flat_map(fn queue -> queue.bindings end)
+             |> Enum.map(fn b -> Map.update!(b, :regex, &Regex.source/1) end)
+             |> same_elements?(Enum.map(response, fn b -> Map.update!(b, :regex, &Regex.source/1) end))
     end
   end
 
@@ -485,6 +544,34 @@ defmodule EctoPGMQ.PGMQTest do
     end
   end
 
+  describe "send_batch_topic/6" do
+    @describetag default_queue_attributes: %{bindings: ["#"]}
+
+    test "will send messages with an integer delay", ctx do
+      queue = ctx.queue
+      payloads = [%{"id" => 1}, %{"id" => 2}]
+
+      assert %{^queue => message_ids} = PGMQ.send_batch_topic(Repo, "my.key", payloads)
+
+      # Validate that all of the messages are in the queue
+      assert Repo
+             |> all_queue_messages(queue)
+             |> same_messages?(message_ids, Enum.map(payloads, &Message.build/1))
+    end
+
+    test "will send messages with a timestamp delay", ctx do
+      queue = ctx.queue
+      payloads = [%{"id" => 1}, %{"id" => 2}]
+
+      assert %{^queue => message_ids} = PGMQ.send_batch_topic(Repo, "my.key", payloads, nil, DateTime.utc_now())
+
+      # Validate that all of the messages are in the queue
+      assert Repo
+             |> all_queue_messages(queue)
+             |> same_messages?(message_ids, Enum.map(payloads, &Message.build/1))
+    end
+  end
+
   describe "set_vt/5" do
     test "will update message visibility timeouts with an integer delay", ctx do
       message_specs = [Message.build(%{"id" => 1}), Message.build(%{"id" => 2})]
@@ -511,6 +598,75 @@ defmodule EctoPGMQ.PGMQTest do
 
       # Validate that the response contains the expected records
       assert updated_messages?(response, messages, 300, 2)
+    end
+  end
+
+  describe "test_routing/3" do
+    @describetag default_queue_attributes: %{bindings: ["#"]}
+
+    test "will return all bindings for a routing key", ctx do
+      queue = ctx.queue
+
+      # Validate that result contains expected bindings
+      assert [%Binding{queue: ^queue}] = PGMQ.test_routing(Repo, "my.key")
+    end
+  end
+
+  describe "unbind_topic/4" do
+    @describetag default_queue_attributes: %{bindings: ["#"]}
+
+    test "will unbind a queue from a routing key pattern", ctx do
+      # Validate that queue has bindings
+      assert %Queue{bindings: [_]} = EctoPGMQ.get_queue(Repo, ctx.queue)
+
+      PGMQ.unbind_topic(Repo, "#", ctx.queue)
+
+      # Validate that queue no longer has bindings
+      assert %Queue{bindings: []} = EctoPGMQ.get_queue(Repo, ctx.queue)
+    end
+  end
+
+  describe "update_notify_insert/4" do
+    @describetag default_queue_attributes: %{notifications: 250}
+
+    test "will update a notification throttle", ctx do
+      # Validate that notification throttle is set
+      assert %Queue{notifications: %Throttle{throttle: throttle}} = EctoPGMQ.get_queue(Repo, ctx.queue)
+      assert DurationType.to_time(throttle, :millisecond) == 250
+
+      PGMQ.update_notify_insert(Repo, ctx.queue, 500)
+
+      # Validate that notification throttle has been updated
+      assert %Queue{notifications: %Throttle{throttle: throttle}} = EctoPGMQ.get_queue(Repo, ctx.queue)
+      assert DurationType.to_time(throttle, :millisecond) == 500
+    end
+  end
+
+  describe "validate_routing_key/3" do
+    @describetag :no_default_queue
+
+    test "will validate a routing key" do
+      assert PGMQ.validate_routing_key(Repo, "my.key") == :ok
+    end
+
+    test "will raise an error with an invalid routing key" do
+      assert_raise Postgrex.Error, fn ->
+        PGMQ.validate_routing_key(Repo, "my.*.invalid..key")
+      end
+    end
+  end
+
+  describe "validate_topic_pattern" do
+    @describetag :no_default_queue
+
+    test "will validate a pattern" do
+      assert PGMQ.validate_topic_pattern(Repo, "my.*.pattern")
+    end
+
+    test "will raise an error with an invalid pattern" do
+      assert_raise Postgrex.Error, fn ->
+        PGMQ.validate_topic_pattern(Repo, "my..invalid*.pattern")
+      end
     end
   end
 

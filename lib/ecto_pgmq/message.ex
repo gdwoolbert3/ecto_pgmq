@@ -1,6 +1,10 @@
 defmodule EctoPGMQ.Message do
   @moduledoc """
   Schema for PGMQ messages.
+
+  > #### Read-Only {: .warning}
+  >
+  > This schema should be treated as read-only.
   """
 
   use Ecto.Schema

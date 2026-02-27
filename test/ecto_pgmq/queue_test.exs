@@ -5,9 +5,9 @@ defmodule EctoPGMQ.QueueTest do
 
   doctest Queue, import: true
 
-  @moduletag :no_default_queue
-
   describe "query/0" do
+    @describetag :no_default_queue
+
     test "will return a query for queues" do
       queue_1 = EctoPGMQ.create_queue(Repo, "my_queue_1")
       queue_2 = EctoPGMQ.create_queue(Repo, "my_queue_2")
