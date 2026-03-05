@@ -9,8 +9,6 @@ defmodule EctoPGMQ.BindingTest do
 
   @moduletag queue_attributes: %{bindings: ["#"]}
 
-  # TODO(Gordon) - stronger checks when ctx contains entire queue?
-
   describe "query/0" do
     @tag queue: false
     test "will return a query for queue bindings" do

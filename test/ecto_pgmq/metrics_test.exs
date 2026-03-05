@@ -10,14 +10,14 @@ defmodule EctoPGMQ.MetricsTest do
   describe "query/0" do
     @tag queue: false
     test "will return a query for queue metrics" do
-      EctoPGMQ.create_queue(Repo, "my_queue_1")
-      EctoPGMQ.create_queue(Repo, "my_queue_2")
+      %{metrics: metrics_1} = EctoPGMQ.create_queue(Repo, "my_queue_1")
+      %{metrics: metrics_2} = EctoPGMQ.create_queue(Repo, "my_queue_2")
+      metrics = Repo.all(Metrics.query())
 
       # Validate that all queue metrics are returned by the query
-      assert Metrics.query()
-             |> Repo.all()
-             |> Enum.map(fn %Metrics{queue: queue} -> queue end)
-             |> same_elements?(["my_queue_1", "my_queue_2"])
+      assert [metrics_1, metrics_2]
+             |> Enum.map(fn m -> %{m | requested_at: nil} end)
+             |> same_elements?(Enum.map(metrics, fn m -> %{m | requested_at: nil} end))
     end
 
     test "will allow filtering on message age field with a Duration struct", ctx do

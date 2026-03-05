@@ -106,6 +106,7 @@ defmodule EctoPGMQ.PGMQTest do
                created_at: %DateTime{},
                partitioned?: false,
                unlogged?: false,
+               bindings: [],
                metrics: %Metrics{},
                notifications: nil
              } = EctoPGMQ.get_queue(Repo, "my_unpartitioned_queue")
@@ -127,6 +128,7 @@ defmodule EctoPGMQ.PGMQTest do
                created_at: %DateTime{},
                partitioned?: true,
                unlogged?: false,
+               bindings: [],
                metrics: %Metrics{},
                notifications: nil
              } = EctoPGMQ.get_queue(Repo, "my_partitioned_queue")
@@ -146,6 +148,7 @@ defmodule EctoPGMQ.PGMQTest do
                created_at: %DateTime{},
                partitioned?: true,
                unlogged?: false,
+               bindings: [],
                metrics: %Metrics{},
                notifications: nil
              } = EctoPGMQ.get_queue(Repo, "my_partitioned_queue")
@@ -167,6 +170,7 @@ defmodule EctoPGMQ.PGMQTest do
                created_at: %DateTime{},
                partitioned?: false,
                unlogged?: true,
+               bindings: [],
                metrics: %Metrics{},
                notifications: nil
              } = EctoPGMQ.get_queue(Repo, "my_unlogged_queue")
@@ -250,8 +254,10 @@ defmodule EctoPGMQ.PGMQTest do
       response = PGMQ.list_queues(Repo)
 
       # Validate that the response contains the expected records
+      # Note that metrics need to be set to nil since they exist as soon as the
+      # queue is created
       assert [queue_1, queue_2]
-             |> Enum.map(fn queue -> %{queue | metrics: nil, notifications: nil} end)
+             |> Enum.map(fn queue -> %{queue | metrics: nil} end)
              |> same_elements?(response)
     end
   end
@@ -279,14 +285,14 @@ defmodule EctoPGMQ.PGMQTest do
     @describetag queue: false
 
     test "will return metrics for all queues" do
-      EctoPGMQ.create_queue(Repo, "my_queue_1")
-      EctoPGMQ.create_queue(Repo, "my_queue_2")
+      %{metrics: metrics_1} = EctoPGMQ.create_queue(Repo, "my_queue_1")
+      %{metrics: metrics_2} = EctoPGMQ.create_queue(Repo, "my_queue_2")
+      response = PGMQ.metrics_all(Repo)
 
       # Validate that the response contains the expected records
-      assert Repo
-             |> PGMQ.metrics_all()
-             |> Enum.map(fn %Metrics{queue: queue} -> queue end)
-             |> same_elements?(["my_queue_1", "my_queue_2"])
+      assert [metrics_1, metrics_2]
+             |> Enum.map(fn m -> %{m | requested_at: nil} end)
+             |> same_elements?(Enum.map(response, fn m -> %{m | requested_at: nil} end))
     end
   end
 

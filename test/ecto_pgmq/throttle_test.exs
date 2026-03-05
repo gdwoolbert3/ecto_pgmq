@@ -12,13 +12,13 @@ defmodule EctoPGMQ.ThrottleTest do
   describe "query/0" do
     @tag queue: false
     test "will return a query for notification throttles" do
-      queue_1 = EctoPGMQ.create_queue(Repo, "my_queue_1", %{notifications: 250})
-      queue_2 = EctoPGMQ.create_queue(Repo, "my_queue_2", %{notifications: 250})
+      %{notifications: throttle_1} = EctoPGMQ.create_queue(Repo, "my_queue_1", %{notifications: 250})
+      %{notifications: throttle_2} = EctoPGMQ.create_queue(Repo, "my_queue_2", %{notifications: 250})
 
       # Validate that all notification throttles are returned by the query
-      assert [queue_1, queue_2]
-             |> Enum.map(fn queue -> queue.notifications end)
-             |> same_elements?(Repo.all(Throttle.query()))
+      assert Throttle.query()
+             |> Repo.all()
+             |> same_elements?([throttle_1, throttle_2])
     end
 
     test "will allow filtering on interval field with a Duration struct", ctx do

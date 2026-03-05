@@ -23,7 +23,7 @@ defmodule EctoPGMQ.Binding do
   @typedoc """
   A PGMQ binding pattern.
 
-  Binding patterns must mett the following conditions:
+  Binding patterns must meet the following conditions:
 
     * Must only contain alphanumeric characters, dots (`.`), hyphens (`-`),
       underscores (`_`), and wildcards (`*` and `#`).

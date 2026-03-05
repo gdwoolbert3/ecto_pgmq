@@ -6,7 +6,7 @@ defmodule EctoPGMQ.Queue do
   >
   > This schema should be treated as read-only.
 
-  TODO(Gordon) - determine if queue is optimized for FIFO reads in query?
+  TODO(Gordon) - determine if queue is optimized for FIFO reads in query and update tests?
   """
 
   use Ecto.Schema
