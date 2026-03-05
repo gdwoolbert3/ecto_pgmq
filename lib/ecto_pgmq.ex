@@ -151,11 +151,6 @@ defmodule EctoPGMQ do
   For more information about FIFO message groups, see the
   [PGMQ docs](https://github.com/pgmq/pgmq/blob/main/docs/fifo-queues.md).
 
-  ## Message Routing
-
-  TODO(Gordon) - Add this
-  TODO(Gordon) - maybe point to `Binding` module instead?
-
   TODO(Gordon) - blurb about topics and routing
   TODO(Gordon) - implement PGMQ functions
   TODO(Gordon) - consistent usage of aliases
@@ -164,6 +159,8 @@ defmodule EctoPGMQ do
   TODO(Gordon) - manually decorate messages with `group` in PGMQ.set_vt
   TODO(Gordon) - expose `bindings` in (create/update)_queue?
   TODO(Gordon) - rename test tags
+  TODO(Gordon) - use term_to_binary instead of pid_to_list in producer tests
+  TODO(Gordon) - think about places where it makes sense to accept either queue or queue name?
   """
 
   alias Ecto.Repo
@@ -268,7 +265,7 @@ defmodule EctoPGMQ do
 
     * `:bindings` - An optional `t:list/0` of `t:EctoPGMQ.Binding.pattern/0`
       for the queue. Defaults to `[]`. For more information about bindings, see
-      [Message Routing](#message-routing).
+      [Message Routing](`m:EctoPGMQ.Binding#message-routing`).
 
     * `:message_groups?` - An optional `t:boolean/0` denoting whether or not the
       queue should be optimized for FIFO message group reads. Defaults to
@@ -304,7 +301,7 @@ defmodule EctoPGMQ do
 
     * `:bindings` - An optional `t:list/0` of `t:EctoPGMQ.Binding.pattern/0`
       for the queue. For more information about bindings, see
-      [Message Routing](#message-routing).
+      [Message Routing](`m:EctoPGMQ.Binding#message-routing`).
 
        > #### Replace Behavior {: .warning}
        >
@@ -571,7 +568,7 @@ defmodule EctoPGMQ do
           # Update notification throttle when specified
           {%Throttle{} = throttle, {:ok, nt}} ->
             throttle
-            |> Ecto.Changeset.cast(%{throttle: nt}, [:throttle])
+            |> Ecto.Changeset.cast(%{interval: nt}, [:interval])
             |> repo.update!(opts)
 
           # Do nothing when no change is specified

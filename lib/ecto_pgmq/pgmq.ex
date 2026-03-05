@@ -12,8 +12,6 @@ defmodule EctoPGMQ.PGMQ do
   All of the functions in this module support a common set of query options.
 
   For a detailed description of these options, see `t:query_opt/0`.
-
-  TODO(Gordon) - relocate message routing information to Binding module
   """
 
   import Ecto.Query
@@ -133,7 +131,7 @@ defmodule EctoPGMQ.PGMQ do
   Routing keys can be validated with `validate_routing_key/3`.
 
   For more information about message routing, see
-  [Message Routing](`m:EctoPGMQ#message-routing`).
+  [Message Routing](`m:EctoPGMQ.Binding#message-routing`).
   """
   @type routing_key :: String.t()
 
@@ -179,7 +177,7 @@ defmodule EctoPGMQ.PGMQ do
   Binds the given queue to the given pattern.
 
   For more information about message routing, see
-  [Message Routing](`m:EctoPGMQ#message-routing`).
+  [Message Routing](`m:EctoPGMQ.Binding#message-routing`).
 
   For more information about this function, see the
   [PGMQ docs](https://github.com/pgmq/pgmq/blob/main/docs/topics.md#pgmqbind_topicpattern-queue_name).
@@ -491,7 +489,7 @@ defmodule EctoPGMQ.PGMQ do
   Lists all topic bindings.
 
   For more information about message routing, see
-  [Message Routing](`m:EctoPGMQ#message-routing`).
+  [Message Routing](`m:EctoPGMQ.Binding#message-routing`).
 
   For more information about this function, see the
   [PGMQ docs](https://github.com/pgmq/pgmq/blob/main/docs/topics.md#pgmqlist_topic_bindings).
@@ -839,7 +837,7 @@ defmodule EctoPGMQ.PGMQ do
   Sends the given messages with the given routing key.
 
   For more information about message routing, see
-  [Message Routing](`m:EctoPGMQ#message-routing`).
+  [Message Routing](`m:EctoPGMQ.Binding#message-routing`).
 
   For more information about this function, see the
   [PGMQ docs](https://github.com/pgmq/pgmq/blob/main/docs/topics.md#pgmqsend_batch_topicrouting_key-msgs-headers-delay).
@@ -921,7 +919,7 @@ defmodule EctoPGMQ.PGMQ do
   populated.
 
   For more information about message routing, see
-  [Message Routing](`m:EctoPGMQ#message-routing`).
+  [Message Routing](`m:EctoPGMQ.Binding#message-routing`).
 
   For more information about this function, see the
   [PGMQ docs](https://github.com/pgmq/pgmq/blob/main/docs/topics.md#pgmqtest_routingrouting_key).
@@ -943,7 +941,7 @@ defmodule EctoPGMQ.PGMQ do
   Unbinds the given queue from the given pattern.
 
   For more information about message routing, see
-  [Message Routing](`m:EctoPGMQ#message-routing`).
+  [Message Routing](`m:EctoPGMQ.Binding#message-routing`).
 
   For more information about this function, see the
   [PGMQ docs](https://github.com/pgmq/pgmq/blob/main/docs/topics.md#pgmqunbind_topicpattern-queue_name).
@@ -995,7 +993,7 @@ defmodule EctoPGMQ.PGMQ do
   > given.
 
   For more information about message routing, see
-  [Message Routing](`m:EctoPGMQ#message-routing`).
+  [Message Routing](`m:EctoPGMQ.Binding#message-routing`).
 
   For more information about this function, see the
   [PGMQ docs](https://github.com/pgmq/pgmq/blob/main/docs/topics.md#pgmqvalidate_routing_keyrouting_key).
@@ -1022,7 +1020,7 @@ defmodule EctoPGMQ.PGMQ do
   > This function will raise a `Postgrex.Error` if an invalid pattern is given.
 
   For more information about message routing, see
-  [Message Routing](`m:EctoPGMQ#message-routing`).
+  [Message Routing](`m:EctoPGMQ.Binding#message-routing`).
 
   For more information about this function, see the
   [PGMQ docs](https://github.com/pgmq/pgmq/blob/main/docs/topics.md#pgmqvalidate_topic_patternpattern).

@@ -7,12 +7,12 @@ defmodule EctoPGMQ.BindingTest do
 
   doctest Binding, import: true
 
-  @moduletag default_queue_attributes: %{bindings: ["#"]}
+  @moduletag queue_attributes: %{bindings: ["#"]}
 
   # TODO(Gordon) - stronger checks when ctx contains entire queue?
 
   describe "query/0" do
-    @tag :no_default_queue
+    @tag queue: false
     test "will return a query for queue bindings" do
       queue_1 = EctoPGMQ.create_queue(Repo, "my_queue_1", %{bindings: ["foo.*", "bar.*"]})
       queue_2 = EctoPGMQ.create_queue(Repo, "my_queue_2", %{bindings: ["bar.*", "baz.*"]})

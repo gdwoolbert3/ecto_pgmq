@@ -17,8 +17,6 @@ defmodule EctoPGMQ.Queue do
   alias EctoPGMQ.Metrics
   alias EctoPGMQ.Throttle
 
-  # TODO(Gordon) - alias necessary modules
-
   ################################
   # Types
   ################################

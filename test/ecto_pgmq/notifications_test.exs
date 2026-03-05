@@ -3,7 +3,7 @@ defmodule EctoPGMQ.NotificationsTest do
 
   alias EctoPGMQ.Notifications
 
-  @moduletag default_queue_attributes: %{notifications: 250}
+  @moduletag queue_attributes: %{notifications: 250}
 
   setup_all do
     listener = EctoPGMQ.Listener
@@ -20,10 +20,10 @@ defmodule EctoPGMQ.NotificationsTest do
   describe "subscribe/3" do
     test "will subscribe to queue insert notifications", ctx do
       # Validate that subscription was successful
-      assert {:ok, subscription, channel} = Notifications.subscribe(ctx.listener, ctx.queue)
+      assert {:ok, subscription, channel} = Notifications.subscribe(ctx.listener, ctx.queue.name)
 
       message_specs = [Message.build(%{"id" => 1}), Message.build(%{"id" => 2})]
-      EctoPGMQ.send_messages(Repo, ctx.queue, message_specs)
+      EctoPGMQ.send_messages(Repo, ctx.queue.name, message_specs)
 
       # Validate that a notification is received
       assert_receive {:notification, _, ^subscription, ^channel, ""}
@@ -33,13 +33,13 @@ defmodule EctoPGMQ.NotificationsTest do
   describe "unsubscribe/3" do
     test "will unsubscribe from queue insert notifications", ctx do
       # Validate that subscription was successful
-      assert {:ok, subscription, channel} = Notifications.subscribe(ctx.listener, ctx.queue)
+      assert {:ok, subscription, channel} = Notifications.subscribe(ctx.listener, ctx.queue.name)
 
       # Validate that unsubscription was successful
       assert Notifications.unsubscribe(ctx.listener, subscription) == :ok
 
       message_specs = [Message.build(%{"id" => 1}), Message.build(%{"id" => 2})]
-      EctoPGMQ.send_messages(Repo, ctx.queue, message_specs)
+      EctoPGMQ.send_messages(Repo, ctx.queue.name, message_specs)
 
       # Validate that a notification is NOT received
       refute_receive {:notification, _, ^subscription, ^channel, ""}

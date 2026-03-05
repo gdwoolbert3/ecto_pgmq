@@ -55,14 +55,14 @@ defmodule EctoPGMQ.Metrics do
 
   This schema uses a custom `Ecto.Type` to load the message age fields into a
   `t:Duration.t/0`. This custom type can cast both `t:Duration.t/0` structs and
-  `t:integer/0` times (in milliseconds):
+  `t:non_neg_integer/0` times (in seconds):
 
   ```elixir
   # Casting a Duration struct
   where(query(), [m], m.oldest_message_age >= ^Duration.new!(hour: 1))
 
   # Casting an integer time
-  where(query(), [m], m.newest_message_age <= 250)
+  where(query(), [m], m.newest_message_age <= 30)
   ```
 
   ## Examples

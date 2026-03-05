@@ -6,31 +6,31 @@ defmodule EctoPGMQ.ProducerTest do
   alias EctoPGMQ.Message
 
   test "will consume messages from a queue", ctx do
-    start_link_supervised!({EctoPGMQ.TestPipeline, [queue: ctx.queue]})
+    start_link_supervised!({EctoPGMQ.TestPipeline, [queue: ctx.queue.name]})
     pid = :erlang.pid_to_list(self())
 
     # Validate that producer can read and acknowledge messages
     payloads = [Message.build(%{"pid" => pid})]
-    [message_id] = EctoPGMQ.send_messages(Repo, ctx.queue, payloads)
+    [message_id] = EctoPGMQ.send_messages(Repo, ctx.queue.name, payloads)
 
     assert_receive {:success, %Message{id: ^message_id}}
-    assert with_poll(fn -> queue_empty?(Repo, ctx.queue) end)
+    assert with_poll(fn -> queue_empty?(Repo, ctx.queue.name) end)
 
     # Validate that producer can configure acknowledgements
     payloads = [Message.build(%{"pid" => pid, "archive" => true})]
-    [message_id] = EctoPGMQ.send_messages(Repo, ctx.queue, payloads)
+    [message_id] = EctoPGMQ.send_messages(Repo, ctx.queue.name, payloads)
 
     assert_receive {:success, %Message{id: ^message_id}}
-    assert with_poll(fn -> queue_empty?(Repo, ctx.queue) end)
-    assert with_poll(fn -> archived_message_exists?(ctx.queue, message_id) end)
+    assert with_poll(fn -> queue_empty?(Repo, ctx.queue.name) end)
+    assert with_poll(fn -> archived_message_exists?(ctx.queue.name, message_id) end)
 
     # Validate that producer can acknowledge failed messages
     payloads = [Message.build(%{"pid" => pid, "fail" => true})]
-    [message_id] = EctoPGMQ.send_messages(Repo, ctx.queue, payloads)
+    [message_id] = EctoPGMQ.send_messages(Repo, ctx.queue.name, payloads)
 
     assert_receive {:failure, %Message{id: ^message_id}}
-    assert with_poll(fn -> queue_empty?(Repo, ctx.queue) end)
-    assert with_poll(fn -> archived_message_exists?(ctx.queue, message_id) end)
+    assert with_poll(fn -> queue_empty?(Repo, ctx.queue.name) end)
+    assert with_poll(fn -> archived_message_exists?(ctx.queue.name, message_id) end)
   end
 
   ################################

@@ -7,10 +7,9 @@ defmodule EctoPGMQ.Binding do
   > This schema should be treated as read-only. Queue bindings can be configured
   > with `EctoPGMQ.create_queue/4` and `EctoPGMQ.drop_queue/3`.
 
-  For more information about message routing, see
-  [Message Routing](`m:EctoPGMQ#message-routing`).
+  ## Message Routing
 
-  TODO(Gordon) - Move "Message Routing" Header here?
+  TODO(Gordon) - Add this
   """
 
   use Ecto.Schema

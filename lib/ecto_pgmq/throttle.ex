@@ -9,10 +9,6 @@ defmodule EctoPGMQ.Throttle do
 
   For more information about notification throttling, see
   [Throttling](m:EctoPGMQ.Notifications#throttling).
-
-  TODO(Gordon) - expose query function, remove source, update docs
-  TODO(Gordon) - point at notifications
-  TODO(Gordon) - rename "throttle" field to "interval"
   """
 
   use Ecto.Schema
@@ -26,7 +22,7 @@ defmodule EctoPGMQ.Throttle do
   @typedoc "A PGMQ queue notification throttle."
   @type t :: %__MODULE__{
           queue: EctoPGMQ.Queue.name(),
-          throttle: Duration.t(),
+          interval: Duration.t(),
           last_notified_at: DateTime.t() | nil
         }
 
@@ -37,7 +33,7 @@ defmodule EctoPGMQ.Throttle do
   @primary_key false
   embedded_schema do
     field(:queue, :string, primary_key: true, source: :queue_name)
-    field(:throttle, DurationType, source: :throttle_interval_ms, time_unit: :millisecond)
+    field(:interval, DurationType, source: :throttle_interval_ms, time_unit: :millisecond)
     field(:last_notified_at, :utc_datetime_usec)
   end
 
@@ -53,7 +49,17 @@ defmodule EctoPGMQ.Throttle do
 
   ## Interval Filtering
 
-  TODO(Gordon) - add this after changing field name
+  This schema uses a custom `Ecto.Type` to load the message age fields into a
+  `t:Duration.t/0`. This custom type can cast both `t:Duration.t/0` structs and
+  `t:non_neg_integer/0` times (in milliseconds):
+
+  ```elixir
+  # Casting a Duration struct
+  where(query(), [t], t.interval >= ^Duration.new!(hour: 1))
+
+  # Casting an integer time
+  where(query(), [t], t.interval <= 250)
+  ```
 
   ## Examples
 
