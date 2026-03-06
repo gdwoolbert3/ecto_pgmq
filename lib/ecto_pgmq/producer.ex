@@ -179,6 +179,19 @@ if Code.ensure_loaded?(Broadway) do
 
       * `:visibility_timeout` - A required `t:EctoPGMQ.visibility_timeout/0` for
         read operations.
+
+    ## Message Structure
+
+    The `Broadway.Message` structs emitted by this module have the following
+    structure:
+
+      * `:data` - The `t:EctoPGMQ.Message.payload/0` of the message.
+
+      * `:metadata` - A `t:map/0` containing the following fields:
+
+          * `:queue` - The `t:EctoPGMQ.Queue.name/0` of the source queue
+
+          * All `EctoPGMQ.Message` fields except `:payload`
     """
 
     @behaviour Broadway.Acknowledger
@@ -524,9 +537,14 @@ if Code.ensure_loaded?(Broadway) do
               state.read_opts
             )
             |> Enum.map(fn pgmq_message ->
+              {payload, metadata} =
+                pgmq_message
+                |> Map.from_struct()
+                |> Map.pop!(:payload)
+
               %Message{
-                data: pgmq_message,
-                metadata: %{queue: state.queue},
+                data: payload,
+                metadata: Map.put(metadata, :queue, state.queue),
                 acknowledger:
                   {__MODULE__, {state.repo, state.dynamic_repo, state.queue},
                    %{

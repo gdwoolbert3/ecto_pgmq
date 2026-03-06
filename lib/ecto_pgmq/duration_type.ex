@@ -18,7 +18,11 @@ defmodule EctoPGMQ.DurationType do
 
   @doc false
   @spec to_time(Duration.t(), time_unit()) :: integer()
-  def to_time(%Duration{year: 0, month: 0} = duration, :second), do: collapse_seconds(duration)
+  def to_time(%Duration{year: 0, month: 0, microsecond: {micro, _}} = duration, :second) do
+    duration
+    |> collapse_seconds()
+    |> Kernel.+(System.convert_time_unit(micro, :microsecond, :second))
+  end
 
   def to_time(%Duration{year: 0, month: 0, microsecond: {micro, _}} = duration, :millisecond) do
     duration
@@ -61,6 +65,13 @@ defmodule EctoPGMQ.DurationType do
   def dump(time, _, _) when is_integer(time), do: {:ok, time}
   def dump(nil, _, _), do: {:ok, nil}
   def dump(_, _, _), do: :error
+
+  @doc false
+  @impl Ecto.ParameterizedType
+  @spec equal?(Duration.t(), Duration.t(), time_unit()) :: boolean()
+  def equal?(%Duration{} = duration_1, %Duration{} = duration_2, unit) do
+    to_time(duration_1, unit) == to_time(duration_2, unit)
+  end
 
   @doc false
   @impl Ecto.ParameterizedType
