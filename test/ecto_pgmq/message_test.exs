@@ -3,13 +3,12 @@ defmodule EctoPGMQ.MessageTest do
 
   import Ecto.Query
 
+  alias EctoPGMQ.PGMQ
   alias EctoPGMQ.TestType
-
-  require Ecto.Query
 
   doctest Message, import: true
 
-  # TODO(Gordon) - test archived_at filtering?
+  # TODO(Gordon) - test message API
 
   describe "archive_query/1" do
     test "will return a query for archived messages", ctx do
@@ -52,6 +51,19 @@ defmodule EctoPGMQ.MessageTest do
              |> Repo.all()
              |> same_messages?(message_ids, message_specs)
     end
+
+    test "will allow filtering on archive timestamp field", ctx do
+      message_specs = [Message.build(%{"id" => 1}), Message.build(%{"id" => 2})]
+      message_ids = EctoPGMQ.send_messages(Repo, ctx.queue.name, message_specs)
+      EctoPGMQ.archive_messages(Repo, ctx.queue.name, message_ids)
+
+      # Validate that archive timestamp filter can be used in query
+      assert ctx.queue.name
+             |> Message.archive_query()
+             |> where([m], m.archived_at <= ^DateTime.utc_now())
+             |> Repo.all()
+             |> same_messages?(message_ids, message_specs)
+    end
   end
 
   describe "queue_query/2" do
@@ -76,8 +88,8 @@ defmodule EctoPGMQ.MessageTest do
       # that the sorting column name does NOT match the schema field name
       assert ctx.queue.name
              |> Message.queue_query(archived_at?: true)
-             |> Ecto.Query.union_all(^Message.archive_query(ctx.queue.name))
-             |> Ecto.Query.order_by(fragment("msg_id"))
+             |> union_all(^Message.archive_query(ctx.queue.name))
+             |> order_by(fragment("msg_id"))
              |> Repo.all()
              |> same_messages?(message_ids, message_specs)
     end
@@ -107,6 +119,48 @@ defmodule EctoPGMQ.MessageTest do
              |> where([m], m.payload == type(^range, TestType))
              |> Repo.all()
              |> same_messages?(message_ids, message_specs)
+    end
+  end
+
+  describe "build/3" do
+    @describetag queue: false
+
+    test "will override group in headers with given group" do
+      headers = %{PGMQ.group_header() => "bar"}
+      spec = Message.build(%{"id" => 1}, "foo", headers)
+
+      assert {:spec, %{"id" => 1}, "foo", headers} = spec
+      assert Map.fetch!(headers, PGMQ.group_header()) == "foo"
+    end
+
+    test "will extract group from headers if not specified" do
+      headers = %{PGMQ.group_header() => "foo"}
+      spec = Message.build(%{"id" => 1}, nil, headers)
+
+      assert spec == {:spec, %{"id" => 1}, "foo", headers}
+    end
+  end
+
+  describe "group/1" do
+    test "will extract the group from a message", ctx do
+      message_specs = [Message.build(%{"id" => 1}, "foo")]
+      [message_id] = EctoPGMQ.send_messages(Repo, ctx.queue.name, message_specs)
+
+      assert ctx.queue.name
+             |> Message.queue_query()
+             |> Repo.get(message_id)
+             |> Message.group() == "foo"
+    end
+
+    test "will not extract the group from a message without a group", ctx do
+      message_specs = [Message.build(%{"id" => 1})]
+      [message_id] = EctoPGMQ.send_messages(Repo, ctx.queue.name, message_specs)
+
+      assert ctx.queue.name
+             |> Message.queue_query()
+             |> Repo.get(message_id)
+             |> Message.group()
+             |> is_nil()
     end
   end
 end

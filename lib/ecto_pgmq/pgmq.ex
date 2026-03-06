@@ -1088,10 +1088,7 @@ defmodule EctoPGMQ.PGMQ do
   @spec message_query_select(Ecto.Queryable.t()) :: Ecto.Query.t()
   @spec message_query_select(Ecto.Queryable.t(), Ecto.Type.t()) :: Ecto.Query.t()
   def message_query_select(query, payload_type \\ :map) do
-    select_merge(query, [m], %{
-      group: fragment("?->>?", m.headers, ^@group_header),
-      payload: type(m.payload, ^payload_type)
-    })
+    select_merge(query, [m], %{payload: type(m.payload, ^payload_type)})
   end
 
   @doc false

@@ -108,13 +108,12 @@ defmodule EctoPGMQ.TestHelpers do
   def same_messages?(messages, ids, specs) do
     [ids, specs, messages]
     |> Enum.zip()
-    |> Enum.all?(fn {id, {:spec, payload, group, headers}, message} ->
+    |> Enum.all?(fn {id, {:spec, payload, _, headers}, message} ->
       match?(
         %Message{
           id: ^id,
           payload: ^payload,
-          headers: ^headers,
-          group: ^group
+          headers: ^headers
         },
         message
       )
@@ -153,6 +152,27 @@ defmodule EctoPGMQ.TestHelpers do
   @spec same_elements?(Enumerable.t(), Enumerable.t()) :: boolean()
   def same_elements?(enum_1, enum_2) do
     Enum.sort(enum_1) == Enum.sort(enum_2)
+  end
+
+  @doc """
+  Runs the given function with a poll until the maximum number of retries is
+  exceeded or it returns a truthy value.
+
+  The poll interval interval (in ms) and maximum number of retires are
+  configurable.
+  """
+  @spec with_poll((-> term())) :: term()
+  @spec with_poll((-> term()), pos_integer()) :: term()
+  @spec with_poll((-> term()), pos_integer(), non_neg_integer()) :: term()
+  def with_poll(fun, interval \\ 500, retries \\ 5)
+  def with_poll(fun, _, 0), do: fun.()
+
+  def with_poll(fun, interval, retries) do
+    # https://hexdocs.pm/elixir/1.10.4/Kernel.html#module-truthy-and-falsy-values
+    with result when result in [false, nil] <- fun.() do
+      :timer.sleep(interval)
+      with_poll(fun, interval, retries - 1)
+    end
   end
 
   ################################
