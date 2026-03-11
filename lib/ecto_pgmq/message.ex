@@ -1,6 +1,14 @@
 defmodule EctoPGMQ.Message do
   @moduledoc """
   Schema for PGMQ messages.
+
+  > #### Read-Only {: .warning}
+  >
+  > This schema should be treated as read-only.
+
+  ## Headers
+
+  TODO(Gordon) - Add this
   """
 
   use Ecto.Schema
@@ -74,8 +82,7 @@ defmodule EctoPGMQ.Message do
           visible_at: DateTime.t(),
           last_read_at: DateTime.t() | nil,
           payload: payload() | nil,
-          headers: headers() | nil,
-          group: group() | nil
+          headers: headers() | nil
         }
 
   ################################
@@ -99,11 +106,10 @@ defmodule EctoPGMQ.Message do
     field(:last_read_at, :utc_datetime_usec)
     field(:payload, :map, source: :message, load_in_query: false)
     field(:headers, :map)
-    field(:group, :string, virtual: true)
   end
 
   ################################
-  # Public API
+  # Public Query API
   ################################
 
   @doc """
@@ -123,6 +129,7 @@ defmodule EctoPGMQ.Message do
       iex> EctoPGMQ.archive_messages(Repo, "my_queue", message_ids)
       iex> [%Message{}] = Repo.all(archive_query("my_queue"))
   """
+  @doc group: "Query API"
   @spec archive_query(Queue.name()) :: Ecto.Query.t()
   @spec archive_query(Queue.name(), [{:payload_type, payload_type()}]) :: Ecto.Query.t()
   def archive_query(queue, opts \\ []) do
@@ -135,31 +142,6 @@ defmodule EctoPGMQ.Message do
     |> PGMQ.archive_table_name()
     |> message_table_query(payload_ecto_type)
     |> select_merge([m], %{archived_at: m.archived_at})
-  end
-
-  @doc """
-  Constructs a message specification for the given payload, group, and headers.
-
-  > #### Multiple Groups {: .warning}
-  >
-  > If the group is not `nil`, it will override any group that may already be
-  > specified in the headers.
-  """
-  @spec build(payload() | nil) :: specification()
-  @spec build(payload() | nil, group() | nil) :: specification()
-  @spec build(payload() | nil, group() | nil, headers() | nil) :: specification()
-  def build(payload, group \\ nil, headers \\ nil)
-  def build(payload, nil, nil), do: spec(payload: payload)
-  def build(payload, group, nil), do: build(payload, group, %{})
-
-  def build(payload, nil, headers) do
-    group = Map.get(headers, PGMQ.group_header())
-    spec(payload: payload, group: group, headers: headers)
-  end
-
-  def build(payload, group, headers) do
-    headers = Map.put(headers, PGMQ.group_header(), group)
-    spec(payload: payload, group: group, headers: headers)
   end
 
   @doc """
@@ -182,6 +164,7 @@ defmodule EctoPGMQ.Message do
       iex> EctoPGMQ.send_messages(Repo, "my_queue", message_specs)
       iex> [%Message{}] = Repo.all(queue_query("my_queue"))
   """
+  @doc group: "Query API"
   @spec queue_query(Queue.name()) :: Ecto.Query.t()
   @spec queue_query(Queue.name(), [{:archived_at?, boolean()} | {:payload_type, payload_type()}]) :: Ecto.Query.t()
   def queue_query(queue, opts \\ []) do
@@ -200,6 +183,75 @@ defmodule EctoPGMQ.Message do
     else
       query
     end
+  end
+
+  ################################
+  # Public Message API
+  ################################
+
+  @doc """
+  Constructs a message specification for the given payload, group, and headers.
+
+  > #### Multiple Groups {: .warning}
+  >
+  > If the group is not `nil`, it will override any group that may already be
+  > specified in the headers.
+
+  ## Examples
+
+      iex> build(%{"foo" => 1})
+      {:spec, %{"foo" => 1}, nil, nil}
+
+      iex> build(%{"foo" => 1}, nil, %{"#{PGMQ.group_header()}" => "bar"})
+      {:spec, %{"foo" => 1}, "bar", %{"#{PGMQ.group_header()}" => "bar"}}
+
+      iex> build(%{"foo" => 1}, "bar", %{"#{PGMQ.group_header()}" => "baz"})
+      {:spec, %{"foo" => 1}, "bar", %{"#{PGMQ.group_header()}" => "bar"}}
+  """
+  @doc group: "Message API"
+  @spec build(payload() | nil) :: specification()
+  @spec build(payload() | nil, group() | nil) :: specification()
+  @spec build(payload() | nil, group() | nil, headers() | nil) :: specification()
+  def build(payload, group \\ nil, headers \\ nil)
+  def build(payload, nil, nil), do: spec(payload: payload)
+  def build(payload, group, nil), do: build(payload, group, %{})
+
+  def build(payload, nil, headers) do
+    group = Map.get(headers, PGMQ.group_header())
+    spec(payload: payload, group: group, headers: headers)
+  end
+
+  def build(payload, group, headers) do
+    headers = Map.put(headers, PGMQ.group_header(), group)
+    spec(payload: payload, group: group, headers: headers)
+  end
+
+  @doc """
+  Returns the `t:group/0` for the given message or `nil` if the given message
+  has no group.
+
+  ## Examples
+
+      iex> message_spec = build(%{"foo" => 1}, "bar")
+      iex> [message_id] = EctoPGMQ.send_messages(Repo, "my_queue", [message_spec])
+      iex> message = Repo.get(queue_query("my_queue"), message_id)
+      iex> group(message)
+      "bar"
+
+      iex> message_spec = build(%{"foo" => 1}, "bar")
+      iex> group(message_spec)
+      "bar"
+  """
+  @doc group: "Message API"
+  @spec group(t() | specification()) :: group() | nil
+  def group(%__MODULE__{} = message) do
+    group_from_headers(message.headers)
+  end
+
+  def group(spec) when Record.is_record(spec, :spec) do
+    spec
+    |> spec(:headers)
+    |> group_from_headers()
   end
 
   ################################
@@ -233,13 +285,19 @@ defmodule EctoPGMQ.Message do
   # Private API
   ################################
 
+  defp message_table_query(table, ecto_type) do
+    PGMQ.message_query_select({table, __MODULE__}, ecto_type)
+  end
+
+  defp group_from_headers(headers) when is_map(headers) do
+    Map.get(headers, PGMQ.group_header())
+  end
+
+  defp group_from_headers(nil), do: nil
+
   defp payload_type_to_ecto_type({type, opts}) do
     Ecto.ParameterizedType.init(type, opts)
   end
 
   defp payload_type_to_ecto_type(type), do: type
-
-  defp message_table_query(table, ecto_type) do
-    PGMQ.message_query_select({table, __MODULE__}, ecto_type)
-  end
 end

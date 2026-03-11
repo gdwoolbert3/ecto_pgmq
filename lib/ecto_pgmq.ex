@@ -70,7 +70,6 @@ defmodule EctoPGMQ do
   > "my_queue"
   > |> EctoPGMQ.Message.queue_query(payload_type: MyType)
   > |> where([m], m.payload == type(^my_custom_payload, MyType))
-  > |> Repo.all()
   > ```
   >
   > Note that the second argument to the aforementioned function is **NOT** a
@@ -140,9 +139,9 @@ defmodule EctoPGMQ do
   In general, FIFO message groups are more performant when the following
   conditions are met:
 
-    * There are many low-volume groups
+    * There are many low-volume groups.
 
-    * Messages are removed from the queue relatively quickly
+    * Messages are removed from the queue relatively quickly.
 
     * The queue is optimized for FIFO message group reads (see
       `EctoPGMQ.create_queue/4` and `EctoPGMQ.update_queue/4`).
@@ -151,9 +150,21 @@ defmodule EctoPGMQ do
 
   For more information about FIFO message groups, see the
   [PGMQ docs](https://github.com/pgmq/pgmq/blob/main/docs/fifo-queues.md).
+
+  TODO(Gordon) - blurb about topics and routing
+  TODO(Gordon) - implement PGMQ functions
+  TODO(Gordon) - consistent usage of aliases
+  TODO(Gordon) - define all types in PGMQ module first?
+  TODO(Gordon) - allow timestamp vt in message update spec (and producer ack action spec)
+  TODO(Gordon) - manually decorate messages with `group` in PGMQ.set_vt
+  TODO(Gordon) - expose `bindings` in (create/update)_queue?
+  TODO(Gordon) - rename test tags
+  TODO(Gordon) - use term_to_binary instead of pid_to_list in producer tests
+  TODO(Gordon) - think about places where it makes sense to accept either queue or queue name?
   """
 
   alias Ecto.Repo
+  alias EctoPGMQ.Binding
   alias EctoPGMQ.DurationType
   alias EctoPGMQ.Message
   alias EctoPGMQ.PGMQ
@@ -252,6 +263,10 @@ defmodule EctoPGMQ do
 
   The following attributes are supported:
 
+    * `:bindings` - An optional `t:list/0` of `t:EctoPGMQ.Binding.pattern/0`
+      for the queue. Defaults to `[]`. For more information about bindings, see
+      [Message Routing](`m:EctoPGMQ.Binding#message-routing`).
+
     * `:message_groups?` - An optional `t:boolean/0` denoting whether or not the
       queue should be optimized for FIFO message group reads. Defaults to
       `false`. For more information about FIFO message groups, see
@@ -270,6 +285,7 @@ defmodule EctoPGMQ do
       should be unlogged. Defaults to `false`.
   """
   @type queue_create_attributes :: %{
+          optional(:bindings) => [Binding.pattern()],
           optional(:message_groups?) => boolean(),
           optional(:notifications) => notification_throttle() | nil,
           optional(:partitions) => partition_config() | nil,
@@ -279,7 +295,19 @@ defmodule EctoPGMQ do
   @typedoc """
   Queue update attributes.
 
+  TODO(Gordon) - validate that these docs are not malformed
+
   The following attributes are supported:
+
+    * `:bindings` - An optional `t:list/0` of `t:EctoPGMQ.Binding.pattern/0`
+      for the queue. For more information about bindings, see
+      [Message Routing](`m:EctoPGMQ.Binding#message-routing`).
+
+       > #### Replace Behavior {: .warning}
+       >
+       > When given, this attribute will **REPLACE** the existing bindings for
+       > the queue. This means that this attribute must contain **ALL** of the
+       > desired bindings for the queue, not just a delta.
 
     * `:message_groups?` - `true` to optimize the queue for FIFO message group
       reads. Note that `true` is the only valid value because this operation
@@ -291,6 +319,7 @@ defmodule EctoPGMQ do
       see `EctoPGMQ.Notifications`.
   """
   @type queue_update_attributes :: %{
+          optional(:bindings) => [Binding.pattern()],
           optional(:message_groups?) => true,
           optional(:notifications) => notification_throttle() | nil
         }
@@ -420,6 +449,11 @@ defmodule EctoPGMQ do
           PGMQ.create_fifo_index(repo, queue, opts)
         end
 
+        # Create bindings when specified
+        attributes
+        |> Map.get(:bindings, [])
+        |> Enum.each(&PGMQ.bind_topic(repo, &1, queue, opts))
+
         # Fetch created queue record
         repo.get!(Queue.query(), queue, opts)
       end,
@@ -513,7 +547,7 @@ defmodule EctoPGMQ do
   """
   @doc group: "Queue API"
   @spec update_queue(Repo.t(), Queue.name(), queue_update_attributes()) :: Queue.t()
-  @spec update_queue(Repo.t(), Queue.name(), queue_create_attributes(), [PGMQ.query_opt()]) :: Queue.t()
+  @spec update_queue(Repo.t(), Queue.name(), queue_update_attributes(), [PGMQ.query_opt()]) :: Queue.t()
   def update_queue(repo, queue, attributes, opts \\ []) do
     transaction(
       repo,
@@ -534,7 +568,7 @@ defmodule EctoPGMQ do
           # Update notification throttle when specified
           {%Throttle{} = throttle, {:ok, nt}} ->
             throttle
-            |> Ecto.Changeset.cast(%{throttle: nt}, [:throttle])
+            |> Ecto.Changeset.cast(%{interval: nt}, [:interval])
             |> repo.update!(opts)
 
           # Do nothing when no change is specified
@@ -546,6 +580,8 @@ defmodule EctoPGMQ do
         if Map.get(attributes, :message_groups?, false) do
           PGMQ.create_fifo_index(repo, queue, opts)
         end
+
+        # TODO(Gordon) - Update bindings when specified
 
         # Fetch updated queue record
         repo.get!(Queue.query(), queue, opts)
@@ -598,6 +634,8 @@ defmodule EctoPGMQ do
 
   @doc """
   Reads messages from the given queue.
+
+  TODO(Gordon) - remove unnecessary `parse_poll_config` function?
 
   ## Options
 

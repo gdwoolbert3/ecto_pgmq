@@ -14,11 +14,16 @@ defmodule EctoPGMQ.MixProject do
     ]
   end
 
+  def cli do
+    [
+      preferred_envs: [ci: :test]
+    ]
+  end
+
   def project do
     [
       aliases: aliases(),
       app: :ecto_pgmq,
-      cli: cli(),
       deps: deps(),
       description: description(),
       dialyzer: dialyzer(),
@@ -45,12 +50,6 @@ defmodule EctoPGMQ.MixProject do
         "test --cover --export-coverage default",
         "dialyzer --format github"
       ]
-    ]
-  end
-
-  def cli do
-    [
-      preferred_envs: [ci: :test]
     ]
   end
 

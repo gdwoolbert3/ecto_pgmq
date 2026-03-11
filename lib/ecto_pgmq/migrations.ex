@@ -128,6 +128,7 @@ defmodule EctoPGMQ.Migrations do
   ```
   """
   @doc group: "Extension Installation API"
+  @spec update_extension :: :ok
   def update_extension do
     Migration.execute("ALTER EXTENSION #{PGMQ.extension()} UPDATE")
   end

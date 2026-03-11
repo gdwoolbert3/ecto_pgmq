@@ -10,12 +10,12 @@ defmodule EctoPGMQ.TestCase do
   In addition to standard test tags, `EctoPGMQ` unit tests also support the
   following tags:
 
-    * `:no_default_queue` - An optional `t:boolean/0` denoting whether or not to
-      skip default queue creation.
+    * `:queue` - An optional `t:boolean/0` denoting whether or not to create a
+      queue for the test. If `true`, the queue will be included in the test
+      context under the `:queue` key. Defaults to `true`.
 
-    * `:default_queue_attributes` - An optional
-      `t:EctoPGMQ.queue_create_attributes/0` for the default queue. Defaults to
-      `%{}`.
+    * `:queue_attributes` - An optional `t:EctoPGMQ.queue_create_attributes/0`
+      for the default queue. Defaults to `%{}`.
   """
 
   use ExUnit.CaseTemplate
@@ -23,7 +23,7 @@ defmodule EctoPGMQ.TestCase do
   alias Ecto.Adapters.SQL.Sandbox
   alias EctoPGMQ.TestRepo
 
-  @default_queue "my_queue"
+  @queue_name "my_queue"
 
   ################################
   # CaseTemplate Callbacks
@@ -42,27 +42,27 @@ defmodule EctoPGMQ.TestCase do
   # ExUnit Callbacks
   ################################
 
-  setup tags do
+  setup ctx do
     # Only use sandbox for async tests
-    sandbox? = tags[:async]
-    queue_attrs = Map.get(tags, :default_queue_attributes, %{})
+    sandbox? = Map.fetch!(ctx, :async)
+    queue_attrs = Map.get(ctx, :queue_attributes, %{})
     :ok = Sandbox.checkout(TestRepo, sandbox: sandbox?)
 
     cond do
-      # Skip queue creations when specified
-      tags[:no_default_queue] ->
+      # Skip queue creation when specified
+      not Map.get(ctx, :queue, true) ->
         :ok
 
       # Create default queue without teardown when specified
       sandbox? ->
-        EctoPGMQ.create_queue(TestRepo, @default_queue, queue_attrs)
-        %{queue: @default_queue}
+        queue = EctoPGMQ.create_queue(TestRepo, @queue_name, queue_attrs)
+        %{queue: queue}
 
       # Create default queue with teardown
       true ->
-        EctoPGMQ.create_queue(TestRepo, @default_queue, queue_attrs)
-        on_exit(fn -> EctoPGMQ.drop_queue(TestRepo, @default_queue) end)
-        %{queue: @default_queue}
+        queue = EctoPGMQ.create_queue(TestRepo, @queue_name, queue_attrs)
+        on_exit(fn -> EctoPGMQ.drop_queue(TestRepo, @queue_name) end)
+        %{queue: queue}
     end
   end
 end

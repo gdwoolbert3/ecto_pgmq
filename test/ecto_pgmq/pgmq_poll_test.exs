@@ -18,11 +18,11 @@ defmodule EctoPGMQ.PGMQPollTest do
       # Start a 30 second poll operation
       task =
         Task.async(fn ->
-          PGMQ.read_grouped_rr_with_poll(Repo, ctx.queue, 300, 2, 30)
+          PGMQ.read_grouped_rr_with_poll(Repo, ctx.queue.name, 300, 2, 30)
         end)
 
       message_specs = [Message.build(%{"id" => 1}), Message.build(%{"id" => 2})]
-      message_ids = EctoPGMQ.send_messages(Repo, ctx.queue, message_specs)
+      message_ids = EctoPGMQ.send_messages(Repo, ctx.queue.name, message_specs)
 
       # Wait up to 5 seconds for a response
       response = Task.await(task)
@@ -37,11 +37,11 @@ defmodule EctoPGMQ.PGMQPollTest do
       # Start a 30 second poll operation
       task =
         Task.async(fn ->
-          PGMQ.read_grouped_with_poll(Repo, ctx.queue, 300, 3, 30)
+          PGMQ.read_grouped_with_poll(Repo, ctx.queue.name, 300, 3, 30)
         end)
 
       message_specs = [Message.build(%{"id" => 1}), Message.build(%{"id" => 2})]
-      message_ids = EctoPGMQ.send_messages(Repo, ctx.queue, message_specs)
+      message_ids = EctoPGMQ.send_messages(Repo, ctx.queue.name, message_specs)
 
       # Wait up to 5 seconds for a response
       response = Task.await(task)
@@ -56,11 +56,11 @@ defmodule EctoPGMQ.PGMQPollTest do
       # Start a 30 second poll operation
       task =
         Task.async(fn ->
-          PGMQ.read_with_poll(Repo, ctx.queue, 300, 3, 30)
+          PGMQ.read_with_poll(Repo, ctx.queue.name, 300, 3, 30)
         end)
 
       message_specs = [Message.build(%{"id" => 1}), Message.build(%{"id" => 2})]
-      message_ids = EctoPGMQ.send_messages(Repo, ctx.queue, message_specs)
+      message_ids = EctoPGMQ.send_messages(Repo, ctx.queue.name, message_specs)
 
       # Wait up to 5 seconds for a response
       response = Task.await(task)
