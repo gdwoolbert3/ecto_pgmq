@@ -8,8 +8,6 @@ defmodule EctoPGMQ.MessageTest do
 
   doctest Message, import: true
 
-  # TODO(Gordon) - test message API
-
   describe "archive_query/1" do
     test "will return a query for archived messages", ctx do
       message_specs = [Message.build(%{"id" => 1}), Message.build(%{"id" => 2})]
@@ -56,11 +54,12 @@ defmodule EctoPGMQ.MessageTest do
       message_specs = [Message.build(%{"id" => 1}), Message.build(%{"id" => 2})]
       message_ids = EctoPGMQ.send_messages(Repo, ctx.queue.name, message_specs)
       EctoPGMQ.archive_messages(Repo, ctx.queue.name, message_ids)
+      cutoff = DateTime.utc_now()
 
       # Validate that archive timestamp filter can be used in query
       assert ctx.queue.name
              |> Message.archive_query()
-             |> where([m], m.archived_at <= ^DateTime.utc_now())
+             |> where([m], m.archived_at <= ^cutoff)
              |> Repo.all()
              |> same_messages?(message_ids, message_specs)
     end
@@ -153,6 +152,17 @@ defmodule EctoPGMQ.MessageTest do
     end
 
     test "will not extract the group from a message without a group", ctx do
+      message_specs = [Message.build(%{"id" => 1}, nil, %{"my_header" => "bar"})]
+      [message_id] = EctoPGMQ.send_messages(Repo, ctx.queue.name, message_specs)
+
+      assert ctx.queue.name
+             |> Message.queue_query()
+             |> Repo.get(message_id)
+             |> Message.group()
+             |> is_nil()
+    end
+
+    test "will not extract the group from a message without headers", ctx do
       message_specs = [Message.build(%{"id" => 1})]
       [message_id] = EctoPGMQ.send_messages(Repo, ctx.queue.name, message_specs)
 
@@ -161,6 +171,24 @@ defmodule EctoPGMQ.MessageTest do
              |> Repo.get(message_id)
              |> Message.group()
              |> is_nil()
+    end
+
+    test "will extract the group from a message spec" do
+      message_spec = Message.build(%{"id" => 1}, "foo")
+
+      assert Message.group(message_spec) == "foo"
+    end
+
+    test "will not extract the group from a message spec without a group" do
+      message_spec = Message.build(%{"id" => 1}, nil, %{"my_header" => "bar"})
+
+      assert Message.group(message_spec) == nil
+    end
+
+    test "will not extract the group from a message spec without headers" do
+      message_spec = Message.build(%{"id" => 1})
+
+      assert Message.group(message_spec) == nil
     end
   end
 end

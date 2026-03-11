@@ -9,9 +9,6 @@ defmodule EctoPGMQ.Message do
   ## Headers
 
   TODO(Gordon) - Add this
-  TODO(Gordon) - remove `group` field in favor of documented headers
-
-  TODO(Gordon) - query vs message API
   """
 
   use Ecto.Schema
@@ -199,6 +196,17 @@ defmodule EctoPGMQ.Message do
   >
   > If the group is not `nil`, it will override any group that may already be
   > specified in the headers.
+
+  ## Examples
+
+      iex> build(%{"foo" => 1})
+      {:spec, %{"foo" => 1}, nil, nil}
+
+      iex> build(%{"foo" => 1}, nil, %{"#{PGMQ.group_header()}" => "bar"})
+      {:spec, %{"foo" => 1}, "bar", %{"#{PGMQ.group_header()}" => "bar"}}
+
+      iex> build(%{"foo" => 1}, "bar", %{"#{PGMQ.group_header()}" => "baz"})
+      {:spec, %{"foo" => 1}, "bar", %{"#{PGMQ.group_header()}" => "bar"}}
   """
   @doc group: "Message API"
   @spec build(payload() | nil) :: specification()
@@ -222,13 +230,28 @@ defmodule EctoPGMQ.Message do
   Returns the `t:group/0` for the given message or `nil` if the given message
   has no group.
 
+  ## Examples
+
+      iex> message_spec = build(%{"foo" => 1}, "bar")
+      iex> [message_id] = EctoPGMQ.send_messages(Repo, "my_queue", [message_spec])
+      iex> message = Repo.get(queue_query("my_queue"), message_id)
+      iex> group(message)
+      "bar"
+
+      iex> message_spec = build(%{"foo" => 1}, "bar")
+      iex> group(message_spec)
+      "bar"
   """
   @doc group: "Message API"
-  @spec group(t()) :: group() | nil
+  @spec group(t() | specification()) :: group() | nil
   def group(%__MODULE__{} = message) do
-    with headers when is_map(headers) <- message.headers do
-      Map.get(headers, PGMQ.group_header())
-    end
+    group_from_headers(message.headers)
+  end
+
+  def group(spec) when Record.is_record(spec, :spec) do
+    spec
+    |> spec(:headers)
+    |> group_from_headers()
   end
 
   ################################
@@ -262,13 +285,19 @@ defmodule EctoPGMQ.Message do
   # Private API
   ################################
 
+  defp message_table_query(table, ecto_type) do
+    PGMQ.message_query_select({table, __MODULE__}, ecto_type)
+  end
+
+  defp group_from_headers(headers) when is_map(headers) do
+    Map.get(headers, PGMQ.group_header())
+  end
+
+  defp group_from_headers(nil), do: nil
+
   defp payload_type_to_ecto_type({type, opts}) do
     Ecto.ParameterizedType.init(type, opts)
   end
 
   defp payload_type_to_ecto_type(type), do: type
-
-  defp message_table_query(table, ecto_type) do
-    PGMQ.message_query_select({table, __MODULE__}, ecto_type)
-  end
 end
