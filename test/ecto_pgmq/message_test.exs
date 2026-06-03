@@ -121,7 +121,7 @@ defmodule EctoPGMQ.MessageTest do
     end
   end
 
-  describe "build/3" do
+  describe "build/2" do
     @describetag queue: false
 
     test "will override group in headers with given group" do

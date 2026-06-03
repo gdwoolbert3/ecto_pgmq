@@ -163,8 +163,8 @@ defmodule EctoPGMQ do
   TODO(Gordon) - rename test tags
   TODO(Gordon) - use term_to_binary instead of pid_to_list in producer tests
   TODO(Gordon) - think about places where it makes sense to accept either queue or queue name?
-  TODO(Gordon) - use aliases in doctests, not imports
-  TODO(Gordon) - should ALL schemas be treated as read-only?
+  TODO(Gordon) - use aliases in doctests, not imports?
+  TODO(Gordon) - consider creating specific docs for FIFO groups, PGMQ installation, and custom payload types
   """
 
   alias Ecto.Repo
@@ -528,6 +528,9 @@ defmodule EctoPGMQ do
   @doc """
   Updates the given queue.
 
+  TODO(Gordon) - continue from here
+  TODO(Gordon) - use multi instead of function based transactions?
+
   > #### Unexpected Results {: .warning}
   >
   > Because the underlying tables are owned by PGMQ, this function avoids row
@@ -556,24 +559,23 @@ defmodule EctoPGMQ do
     transaction(
       repo,
       fn ->
-        # Fetch existing throttle record
-        current_throttle = repo.get(Throttle, queue, opts)
+        # Fetch existing queue record
+        queue = repo.get!(Queue.query(), queue, opts)
 
         # Update notifications when specified
-        case {current_throttle, Map.fetch(attributes, :notifications)} do
+        case {queue.notifications, Map.fetch(attributes, :notifications)} do
           # Enable notifications when not already enabled
-          {nil, {:ok, nt}} when not is_nil(nt) ->
-            enable_notifications(repo, queue, nt, opts)
+          {nil, {:ok, notifications}} when not is_nil(notifications) ->
+            enable_notifications(repo, queue.name, notifications, opts)
 
           # Disable notifications when specified
           {%Throttle{}, {:ok, nil}} ->
-            PGMQ.disable_notify_insert(repo, queue, opts)
+            PGMQ.disable_notify_insert(repo, queue.name, opts)
 
           # Update notification throttle when specified
-          {%Throttle{} = throttle, {:ok, nt}} ->
-            throttle
-            |> Ecto.Changeset.cast(%{interval: nt}, [:interval])
-            |> repo.update!(opts)
+          {%Throttle{}, {:ok, notifications}} ->
+            notifications = maybe_to_time(notifications, :millisecond)
+            PGMQ.update_notify_insert(repo, queue.name, notifications, opts)
 
           # Do nothing when no change is specified
           _ ->
@@ -582,7 +584,7 @@ defmodule EctoPGMQ do
 
         # Create FIFO index when specified
         if Map.get(attributes, :message_groups?, false) do
-          PGMQ.create_fifo_index(repo, queue, opts)
+          PGMQ.create_fifo_index(repo, queue.name, opts)
         end
 
         # TODO(Gordon) - Update bindings when specified

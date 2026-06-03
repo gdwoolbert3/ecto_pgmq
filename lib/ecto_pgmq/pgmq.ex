@@ -1067,6 +1067,8 @@ defmodule EctoPGMQ.PGMQ do
   @doc """
   Validates the given routing key.
 
+  TODO(Gordon) - return :error for invalid routing keys insetad of raising
+
   > #### Invalid Routing Key {: .warning}
   >
   > This function will raise a `Postgrex.Error` if an invalid routing key is

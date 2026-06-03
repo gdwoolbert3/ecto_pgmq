@@ -121,10 +121,9 @@ defmodule EctoPGMQTest do
   end
 
   describe "get_queue/3" do
+    @tag queue_attributes: %{notifications: 5_000}
     test "will get a queue", ctx do
       queue = ctx.queue.name
-      interval = Duration.new!(second: 5)
-      EctoPGMQ.update_queue(Repo, queue, %{notifications: interval})
 
       assert %Queue{
                name: ^queue,
@@ -132,7 +131,7 @@ defmodule EctoPGMQTest do
                partitioned?: false,
                unlogged?: false,
                metrics: %Metrics{},
-               notifications: %Throttle{interval: ^interval}
+               notifications: %Throttle{}
              } = EctoPGMQ.get_queue(Repo, queue)
     end
 

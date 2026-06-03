@@ -98,6 +98,7 @@ end
 Messages can be sent to a queue with the following function:
 
 ```elixir
+# TODO(Gordon) - update this function to use build/2
 EctoPGMQ.send_messages(MyApp.Repo, "my_queue", [%{"foo" => 1}, %{"bar" => 2}])
 ```
 
@@ -106,7 +107,7 @@ EctoPGMQ.send_messages(MyApp.Repo, "my_queue", [%{"foo" => 1}, %{"bar" => 2}])
 Messages can be read from a queue with the following function:
 
 ```elixir
-messages = EctoPGMQ.read_messages(MyApp.Repo, "my_queue", 300, 2)
+EctoPGMQ.read_messages(MyApp.Repo, "my_queue", 300, 2)
 ```
 
 Alternatively, messages can also be consumed in a `Broadway` pipeline with the
