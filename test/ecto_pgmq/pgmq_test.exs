@@ -395,6 +395,88 @@ defmodule EctoPGMQ.PGMQTest do
     end
   end
 
+  describe "read_grouped_head/5" do
+    @describetag queue_attributes: %{message_groups?: true}
+
+    test "will read messages from a queue", ctx do
+      message_specs = [
+        Message.build(%{"id" => 1}, "foo"),
+        Message.build(%{"id" => 2}, "bar"),
+        Message.build(%{"id" => 3}, "baz")
+      ]
+
+      EctoPGMQ.send_messages(Repo, ctx.queue.name, message_specs)
+      messages = all_queue_messages(Repo, ctx.queue.name)
+      response = PGMQ.read_grouped_head(Repo, ctx.queue.name, 300, 3)
+
+      # Validate that messages are no longer visible
+      assert PGMQ.read(Repo, ctx.queue.name, 300, 1) == []
+
+      # Validate that the response contains the expected records
+      assert read_messages?(messages, response, 300, 3)
+    end
+
+    test "will read messages from a queue when too many are requested", ctx do
+      message_specs = [
+        Message.build(%{"id" => 1}, "foo"),
+        Message.build(%{"id" => 2}, "foo"),
+        Message.build(%{"id" => 3}, "bar")
+      ]
+
+      EctoPGMQ.send_messages(Repo, ctx.queue.name, message_specs)
+      [foo_1, foo_2, bar] = all_queue_messages(Repo, ctx.queue.name)
+      response = PGMQ.read_grouped_head(Repo, ctx.queue.name, 300, 3)
+      remaining = PGMQ.read(Repo, ctx.queue.name, 300, 3)
+
+      # Validate that read messages are no longer visible
+      assert read_messages?([foo_2], remaining, 300, 1)
+
+      # Validate that the response contains the expected records
+      assert read_messages?([foo_1, bar], response, 300, 2)
+    end
+  end
+
+  describe "read_grouped_head_with_poll/7" do
+    @describetag queue_attributes: %{message_groups?: true}
+
+    test "will read messages from a queue", ctx do
+      message_specs = [
+        Message.build(%{"id" => 1}, "foo"),
+        Message.build(%{"id" => 2}, "bar"),
+        Message.build(%{"id" => 3}, "baz")
+      ]
+
+      EctoPGMQ.send_messages(Repo, ctx.queue.name, message_specs)
+      messages = all_queue_messages(Repo, ctx.queue.name)
+      response = PGMQ.read_grouped_head_with_poll(Repo, ctx.queue.name, 300, 3)
+
+      # Validate that messages are no longer visible
+      assert PGMQ.read(Repo, ctx.queue.name, 300, 1) == []
+
+      # Validate that the response contains the expected records
+      assert read_messages?(messages, response, 300, 3)
+    end
+
+    test "will read messages from a queue when too many are requested", ctx do
+      message_specs = [
+        Message.build(%{"id" => 1}, "foo"),
+        Message.build(%{"id" => 2}, "foo"),
+        Message.build(%{"id" => 3}, "bar")
+      ]
+
+      EctoPGMQ.send_messages(Repo, ctx.queue.name, message_specs)
+      [foo_1, foo_2, bar] = all_queue_messages(Repo, ctx.queue.name)
+      response = PGMQ.read_grouped_head_with_poll(Repo, ctx.queue.name, 300, 3)
+      remaining = PGMQ.read(Repo, ctx.queue.name, 300, 3)
+
+      # Validate that read messages are no longer visible
+      assert read_messages?([foo_2], remaining, 300, 1)
+
+      # Validate that the response contains the expected records
+      assert read_messages?([foo_1, bar], response, 300, 2)
+    end
+  end
+
   describe "read_grouped_rr/5" do
     @describetag queue_attributes: %{message_groups?: true}
 

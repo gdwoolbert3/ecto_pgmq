@@ -65,13 +65,8 @@ defmodule EctoPGMQ.Message do
   """
   @type payload_type :: module() | {module(), keyword()} | :map
 
-  @typedoc """
-  A PGMQ message specification.
-
-  This type is public because it is safe to inspect but, in most cases, message
-  specifications should only be `constructed` with `build/3`.
-  """
-  @type specification :: record(:spec, payload: payload() | nil, group: group() | nil, headers: headers() | nil)
+  @typedoc "A PGMQ message specification."
+  @opaque specification :: record(:spec, payload: payload() | nil, headers: headers() | nil)
 
   @typedoc "A PGMQ message."
   @type t :: %__MODULE__{
@@ -89,7 +84,7 @@ defmodule EctoPGMQ.Message do
   # Private Records
   ################################
 
-  Record.defrecordp(:spec, payload: nil, group: nil, headers: nil)
+  Record.defrecordp(:spec, payload: nil, headers: nil)
 
   ################################
   # Schema
@@ -107,6 +102,16 @@ defmodule EctoPGMQ.Message do
     field(:payload, :map, source: :message, load_in_query: false)
     field(:headers, :map)
   end
+
+  ################################
+  # Public Guards
+  ################################
+
+  @doc """
+  TODO(Gordon) - Add this
+  """
+  @spec is_specification(term()) :: Macro.t()
+  defguard is_specification(term) when Record.is_record(term, :spec)
 
   ################################
   # Public Query API
@@ -210,20 +215,26 @@ defmodule EctoPGMQ.Message do
   """
   @doc group: "Message API"
   @spec build(payload() | nil) :: specification()
-  @spec build(payload() | nil, group() | nil) :: specification()
+  @spec build(payload() | nil, group() | headers() | nil) :: specification()
   @spec build(payload() | nil, group() | nil, headers() | nil) :: specification()
-  def build(payload, group \\ nil, headers \\ nil)
-  def build(payload, nil, nil), do: spec(payload: payload)
-  def build(payload, group, nil), do: build(payload, group, %{})
-
-  def build(payload, nil, headers) do
-    group = Map.get(headers, PGMQ.group_header())
-    spec(payload: payload, group: group, headers: headers)
-  end
+  def build(payload), do: build(payload, nil, nil)
+  def build(payload, group) when is_binary(group), do: build(payload, group, nil)
+  def build(payload, headers), do: build(payload, nil, headers)
 
   def build(payload, group, headers) do
-    headers = Map.put(headers, PGMQ.group_header(), group)
-    spec(payload: payload, group: group, headers: headers)
+    headers =
+      case {group, headers} do
+        {group, %{} = headers} when is_binary(group) ->
+          Map.put(headers, PGMQ.group_header(), group)
+
+        {group, nil} when is_binary(group) ->
+          %{PGMQ.group_header() => group}
+
+        {_, headers} ->
+          headers
+      end
+
+    spec(payload: payload, headers: headers)
   end
 
   @doc """

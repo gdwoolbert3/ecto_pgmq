@@ -108,7 +108,7 @@ defmodule EctoPGMQ.TestHelpers do
   def same_messages?(messages, ids, specs) do
     [ids, specs, messages]
     |> Enum.zip()
-    |> Enum.all?(fn {id, {:spec, payload, _, headers}, message} ->
+    |> Enum.all?(fn {id, {:spec, payload, headers}, message} ->
       match?(
         %Message{
           id: ^id,

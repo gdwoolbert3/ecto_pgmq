@@ -606,8 +606,87 @@ defmodule EctoPGMQ.PGMQ do
   end
 
   @doc """
-  Reads messages from the given queue while respecting and round-robin
-  interleaving FIFO message groups.
+  Reads messages from the given queue while respecting FIFO message groups and
+  returning a single message per group.
+
+  For more information about FIFO message groups, see
+  [FIFO Message Groups](`m:EctoPGMQ#fifo-message-groups`).
+
+  For more information about this function, see the
+  [PGMQ docs](https://github.com/pgmq/pgmq/blob/main/docs/api/sql/functions.md#read_grouped_head).
+
+  ## Examples
+
+      iex> send_batch(Repo, "my_queue", [%{"foo" => 1}])
+      iex> [%Message{reads: 1}] = read_grouped_head(Repo, "my_queue", 5, 1)
+  """
+  @spec read_grouped_head(Repo.t(), Queue.name(), visibility_timeout(), quantity()) :: [Message.t()]
+  @spec read_grouped_head(Repo.t(), Queue.name(), visibility_timeout(), quantity(), [query_opt()]) :: [Message.t()]
+  def read_grouped_head(repo, queue, visibility_timeout, quantity, opts \\ []) do
+    queue
+    |> read_grouped_head_query(visibility_timeout, quantity)
+    |> repo.all(opts)
+  end
+
+  @doc """
+  Reads messages from the given queue with a Postgres server-side poll while
+  respecting FIFO message groups and returning a single message per group.
+
+  For more information about FIFO message groups, see
+  [FIFO Message Groups](`m:EctoPGMQ#fifo-message-groups`).
+
+  For more information about polling, see [Polling](`m:EctoPGMQ#polling`).
+
+  For more information about this function, see the
+  [PGMQ docs](https://github.com/pgmq/pgmq/blob/main/docs/api/sql/functions.md#read_grouped_head_with_poll).
+
+  ## Examples
+
+      iex> send_batch(Repo, "my_queue", [%{"foo" => 1}])
+      iex> [%Message{reads: 1}] = read_grouped_head_with_poll(Repo, "my_queue", 5, 1, 5, 500)
+  """
+  @spec read_grouped_head_with_poll(Repo.t(), Queue.name(), visibility_timeout(), quantity()) :: [Message.t()]
+  @spec read_grouped_head_with_poll(
+          Repo.t(),
+          Queue.name(),
+          visibility_timeout(),
+          quantity(),
+          poll_timeout()
+        ) :: [Message.t()]
+  @spec read_grouped_head_with_poll(
+          Repo.t(),
+          Queue.name(),
+          visibility_timeout(),
+          quantity(),
+          poll_timeout(),
+          poll_interval()
+        ) :: [Message.t()]
+  @spec read_grouped_head_with_poll(
+          Repo.t(),
+          Queue.name(),
+          visibility_timeout(),
+          quantity(),
+          poll_timeout(),
+          poll_interval(),
+          [query_opt()]
+        ) :: [Message.t()]
+  def read_grouped_head_with_poll(
+        repo,
+        queue,
+        visibility_timeout,
+        quantity,
+        poll_timeout \\ 5,
+        poll_interval \\ 100,
+        opts \\ []
+      ) do
+    queue
+    |> read_grouped_head_with_poll_query(visibility_timeout, quantity, poll_timeout, poll_interval)
+    |> repo.all(opts)
+  end
+
+  @doc """
+  Reads messages from the given queue while respecting FIFO message groups and
+  round-robin interleaving FIFO message groups.
 
   For more information about FIFO message groups, see
   [FIFO Message Groups](`m:EctoPGMQ#fifo-message-groups`).
@@ -630,7 +709,8 @@ defmodule EctoPGMQ.PGMQ do
 
   @doc """
   Reads messages from the given queue with a Postgres server-side poll while
-  respecting and round-robin interleaving FIFO message groups.
+  respecting FIFO message groups and round-robin interleaving FIFO message
+  groups.
 
   For more information about FIFO message groups, see
   [FIFO Message Groups](`m:EctoPGMQ#fifo-message-groups`).
@@ -1105,6 +1185,64 @@ defmodule EctoPGMQ.PGMQ do
     |> message_query_from()
     |> message_query_select(payload_type)
     |> with_cte("pop", as: fragment("SELECT * FROM pgmq.pop(?::text, ?::integer)", ^queue, ^quantity))
+  end
+
+  @doc false
+  @spec read_grouped_head_query(Queue.name(), visibility_timeout(), quantity()) :: Ecto.Query.t()
+  @spec read_grouped_head_query(Queue.name(), visibility_timeout(), quantity(), Ecto.Type.t()) :: Ecto.Query.t()
+  def read_grouped_head_query(queue, visibility_timeout, quantity, payload_type \\ :map) do
+    "read_grouped_head"
+    |> message_query_from()
+    |> message_query_select(payload_type)
+    |> with_cte("read_grouped_head",
+      as:
+        fragment(
+          "SELECT * FROM pgmq.read_grouped_head(?::text, ?::integer, ?::integer)",
+          ^queue,
+          ^visibility_timeout,
+          ^quantity
+        )
+    )
+  end
+
+  @doc false
+  @spec read_grouped_head_with_poll_query(
+          Queue.name(),
+          visibility_timeout(),
+          quantity(),
+          poll_timeout(),
+          poll_interval()
+        ) :: Ecto.Query.t()
+  @spec read_grouped_head_with_poll_query(
+          Queue.name(),
+          visibility_timeout(),
+          quantity(),
+          poll_timeout(),
+          poll_interval(),
+          Ecto.Type.t()
+        ) :: Ecto.Query.t()
+  def read_grouped_head_with_poll_query(
+        queue,
+        visibility_timeout,
+        quantity,
+        poll_timeout,
+        poll_interval,
+        payload_type \\ :map
+      ) do
+    "read_grouped_head_with_poll"
+    |> message_query_from()
+    |> message_query_select(payload_type)
+    |> with_cte("read_grouped_head_with_poll",
+      as:
+        fragment(
+          "SELECT * FROM pgmq.read_grouped_head_with_poll(?::text, ?::integer, ?::integer, ?::integer, ?::integer)",
+          ^queue,
+          ^visibility_timeout,
+          ^quantity,
+          ^poll_timeout,
+          ^poll_interval
+        )
+    )
   end
 
   @doc false

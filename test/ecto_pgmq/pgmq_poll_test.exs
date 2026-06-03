@@ -13,6 +13,25 @@ defmodule EctoPGMQ.PGMQPollTest do
 
   alias EctoPGMQ.PGMQ
 
+  describe "read_grouped_head_with_poll/7" do
+    test "will poll until messages are available", ctx do
+      # Start a 30 second poll operation
+      task =
+        Task.async(fn ->
+          PGMQ.read_grouped_head_with_poll(Repo, ctx.queue.name, 300, 2, 30)
+        end)
+
+      message_specs = [Message.build(%{"id" => 1}, "foo"), Message.build(%{"id" => 2}, "bar")]
+      message_ids = EctoPGMQ.send_messages(Repo, ctx.queue.name, message_specs)
+
+      # Wait up to 5 seconds for a response
+      response = Task.await(task)
+
+      # Validate that the response contains the expected records
+      assert same_messages?(response, message_ids, message_specs)
+    end
+  end
+
   describe "read_grouped_rr_with_poll/7" do
     test "will poll until messages are available", ctx do
       # Start a 30 second poll operation

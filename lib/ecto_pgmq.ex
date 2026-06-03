@@ -93,6 +93,8 @@ defmodule EctoPGMQ do
 
   ### Round-Robin Reading
 
+  TODO(Gordon) - add documentation for read_grouped_head style
+
   This method will fairly interleave messages from all available groups.
 
       iex> message_specs =
@@ -161,6 +163,8 @@ defmodule EctoPGMQ do
   TODO(Gordon) - rename test tags
   TODO(Gordon) - use term_to_binary instead of pid_to_list in producer tests
   TODO(Gordon) - think about places where it makes sense to accept either queue or queue name?
+  TODO(Gordon) - use aliases in doctests, not imports
+  TODO(Gordon) - should ALL schemas be treated as read-only?
   """
 
   alias Ecto.Repo
