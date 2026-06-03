@@ -5,7 +5,7 @@ defmodule EctoPGMQ.Binding do
   > #### Read-Only {: .warning}
   >
   > This schema should be treated as read-only. Queue bindings can be configured
-  > with `EctoPGMQ.create_queue/4` and `EctoPGMQ.drop_queue/3`.
+  > with `EctoPGMQ.create_queue/4` and `EctoPGMQ.update_queue/4`.
 
   ## Message Routing
 

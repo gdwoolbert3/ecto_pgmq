@@ -191,7 +191,7 @@ if Code.ensure_loaded?(Broadway) do
 
           * `:queue` - The `t:EctoPGMQ.Queue.name/0` of the source queue
 
-          * All `EctoPGMQ.Message` fields except `:payload`
+          * All `t:EctoPGMQ.Message.t/0` fields except `:payload`
     """
 
     @behaviour Broadway.Acknowledger

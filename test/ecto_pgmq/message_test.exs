@@ -128,7 +128,7 @@ defmodule EctoPGMQ.MessageTest do
       headers = %{PGMQ.group_header() => "bar"}
       spec = Message.build(%{"id" => 1}, "foo", headers)
 
-      assert {:spec, %{"id" => 1}, "foo", headers} = spec
+      assert {:spec, %{"id" => 1}, headers} = spec
       assert Map.fetch!(headers, PGMQ.group_header()) == "foo"
     end
 
@@ -136,7 +136,7 @@ defmodule EctoPGMQ.MessageTest do
       headers = %{PGMQ.group_header() => "foo"}
       spec = Message.build(%{"id" => 1}, nil, headers)
 
-      assert spec == {:spec, %{"id" => 1}, "foo", headers}
+      assert spec == {:spec, %{"id" => 1}, headers}
     end
   end
 

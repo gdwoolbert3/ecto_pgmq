@@ -65,6 +65,7 @@ defmodule EctoPGMQ.Message do
   """
   @type payload_type :: module() | {module(), keyword()} | :map
 
+  # TODO(Gordon) - reconsider using a public type here to avoid opaque warnings?
   @typedoc "A PGMQ message specification."
   @opaque specification :: record(:spec, payload: payload() | nil, headers: headers() | nil)
 
@@ -205,13 +206,16 @@ defmodule EctoPGMQ.Message do
   ## Examples
 
       iex> build(%{"foo" => 1})
-      {:spec, %{"foo" => 1}, nil, nil}
+      {:spec, %{"foo" => 1}, nil}
 
-      iex> build(%{"foo" => 1}, nil, %{"#{PGMQ.group_header()}" => "bar"})
-      {:spec, %{"foo" => 1}, "bar", %{"#{PGMQ.group_header()}" => "bar"}}
+      iex> build(%{"foo" => 1}, %{"bar" => "baz"})
+      {:spec, %{"foo" => 1}, %{"bar" => "baz"}}
+
+      iex> build(%{"foo" => 1}, "bar")
+      {:spec, %{"foo" => 1}, %{"#{PGMQ.group_header()}" => "bar"}}
 
       iex> build(%{"foo" => 1}, "bar", %{"#{PGMQ.group_header()}" => "baz"})
-      {:spec, %{"foo" => 1}, "bar", %{"#{PGMQ.group_header()}" => "bar"}}
+      {:spec, %{"foo" => 1}, %{"#{PGMQ.group_header()}" => "bar"}}
   """
   @doc group: "Message API"
   @spec build(payload() | nil) :: specification()
