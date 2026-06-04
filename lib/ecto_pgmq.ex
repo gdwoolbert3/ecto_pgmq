@@ -87,9 +87,17 @@ defmodule EctoPGMQ do
   that read messages while guaranteeing FIFO ordering for messages with the same
   `#{EctoPGMQ.PGMQ.group_header()}` header.
 
-  There are two slightly different methodologies for reading messages while
-  respecting FIFO message groups: round-robin reading and throughput-optimized
-  reading.
+  There are three slightly different methodologies for reading messages while
+  respecting FIFO message groups: head reading, round-robin reading and
+  throughput-optimized reading.
+
+  ### Head Reading
+
+  This method will read only the oldest visible message for each group. This
+  allows a single consumer to process messages in parallel without race
+  conditions.
+
+  TODO(Gordon) - add example docs
 
   ### Round-Robin Reading
 
@@ -154,13 +162,10 @@ defmodule EctoPGMQ do
   [PGMQ docs](https://github.com/pgmq/pgmq/blob/main/docs/fifo-queues.md).
 
   TODO(Gordon) - blurb about topics and routing
-  TODO(Gordon) - implement PGMQ functions
-  TODO(Gordon) - consistent usage of aliases
   TODO(Gordon) - define all types in PGMQ module first?
   TODO(Gordon) - allow timestamp vt in message update spec (and producer ack action spec)
   TODO(Gordon) - manually decorate messages with `group` in PGMQ.set_vt
   TODO(Gordon) - expose `bindings` in (create/update)_queue?
-  TODO(Gordon) - rename test tags
   TODO(Gordon) - use term_to_binary instead of pid_to_list in producer tests
   TODO(Gordon) - think about places where it makes sense to accept either queue or queue name?
   TODO(Gordon) - use aliases in doctests, not imports?
@@ -331,6 +336,8 @@ defmodule EctoPGMQ do
   @typedoc """
   Options for reading messages.
 
+  TODO(Gordon) - Add docs for custom payload type
+
   In addition to the standard [query options](`m:EctoPGMQ.PGMQ#query-options`),
   messages can be read with the following options:
 
@@ -352,7 +359,7 @@ defmodule EctoPGMQ do
   @type read_messages_opts :: [
           {:delete?, boolean()}
           | {:polling, poll_config() | nil}
-          | {:message_grouping, :round_robin | :throughput_optimized | nil}
+          | {:message_grouping, :head | :round_robin | :throughput_optimized | nil}
           | PGMQ.query_opt()
         ]
 
@@ -528,9 +535,6 @@ defmodule EctoPGMQ do
   @doc """
   Updates the given queue.
 
-  TODO(Gordon) - continue from here
-  TODO(Gordon) - use multi instead of function based transactions?
-
   > #### Unexpected Results {: .warning}
   >
   > Because the underlying tables are owned by PGMQ, this function avoids row
@@ -539,7 +543,7 @@ defmodule EctoPGMQ do
   > unexpected results.
 
   To update a queue in an `Ecto.Migration`, see
-  `EctoPGMQ.Migrations.update_queue/2`.
+  `EctoPGMQ.Migrations.update_queue/3`.
 
   ## Options
 
@@ -587,10 +591,22 @@ defmodule EctoPGMQ do
           PGMQ.create_fifo_index(repo, queue.name, opts)
         end
 
-        # TODO(Gordon) - Update bindings when specified
+        # Update bindings when specified
+        with {:ok, bindings} <- Map.fetch(attributes, :bindings) do
+          existing = Enum.map(queue.bindings, & &1.pattern)
+          bindings = Enum.uniq(bindings)
+
+          Enum.each(bindings -- existing, fn pattern ->
+            PGMQ.bind_topic(repo, pattern, queue.name, opts)
+          end)
+
+          Enum.each(existing -- bindings, fn pattern ->
+            PGMQ.unbind_topic(repo, pattern, queue.name, opts)
+          end)
+        end
 
         # Fetch updated queue record
-        repo.get!(Queue.query(), queue, opts)
+        repo.get!(Queue.query(), queue.name, opts)
       end,
       opts
     )
@@ -641,8 +657,6 @@ defmodule EctoPGMQ do
   @doc """
   Reads messages from the given queue.
 
-  TODO(Gordon) - remove unnecessary `parse_poll_config` function?
-
   ## Options
 
   See `t:read_messages_opts/0` for information about the options supported by
@@ -660,12 +674,7 @@ defmodule EctoPGMQ do
           Queue.name(),
           visibility_timeout(),
           PGMQ.quantity(),
-          [
-            {:delete?, boolean()}
-            | {:polling, poll_config() | nil}
-            | {:message_grouping, :round_robin | :throughput_optimized | nil}
-            | PGMQ.query_opt()
-          ]
+          read_messages_opts()
         ) :: [Message.t()]
   def read_messages(repo, queue, visibility_timeout, quantity, opts \\ []) do
     {delete?, opts} = Keyword.pop(opts, :delete?, false)
@@ -684,6 +693,9 @@ defmodule EctoPGMQ do
         {false, nil, nil} ->
           PGMQ.read_query(queue, visibility_timeout, quantity, %{}, payload_type)
 
+        {false, nil, :head} ->
+          PGMQ.read_grouped_head_query(queue, visibility_timeout, quantity, payload_type)
+
         {false, nil, :round_robin} ->
           PGMQ.read_grouped_rr_query(queue, visibility_timeout, quantity, payload_type)
 
@@ -693,6 +705,10 @@ defmodule EctoPGMQ do
         {false, poll_config, nil} ->
           {interval, timeout} = parse_poll_config(poll_config)
           PGMQ.read_with_poll_query(queue, visibility_timeout, quantity, timeout, interval, %{}, payload_type)
+
+        {false, poll_config, :head} ->
+          {interval, timeout} = parse_poll_config(poll_config)
+          PGMQ.read_grouped_head_with_poll_query(queue, visibility_timeout, quantity, timeout, interval, payload_type)
 
         {false, poll_config, :round_robin} ->
           {interval, timeout} = parse_poll_config(poll_config)
@@ -710,6 +726,9 @@ defmodule EctoPGMQ do
 
   @doc """
   Sends messages to the given queue.
+
+  TODO(Gordon) - document and add payload type options
+  TODO(Gordon) - consider supporting non_struct_maps in addition to message specs?
 
   ## Options
 

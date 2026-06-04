@@ -54,7 +54,7 @@ defmodule EctoPGMQ.MessageTest do
       message_specs = [Message.build(%{"id" => 1}), Message.build(%{"id" => 2})]
       message_ids = EctoPGMQ.send_messages(Repo, ctx.queue.name, message_specs)
       EctoPGMQ.archive_messages(Repo, ctx.queue.name, message_ids)
-      cutoff = DateTime.utc_now()
+      cutoff = DateTime.shift(DateTime.utc_now(), second: 5)
 
       # Validate that archive timestamp filter can be used in query
       assert ctx.queue.name

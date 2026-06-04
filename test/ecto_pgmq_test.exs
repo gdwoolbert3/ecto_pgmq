@@ -1,6 +1,7 @@
 defmodule EctoPGMQTest do
   use EctoPGMQ.TestCase, async: true
 
+  alias EctoPGMQ.Binding
   alias EctoPGMQ.Metrics
   alias EctoPGMQ.Queue
   alias EctoPGMQ.TestType
@@ -38,7 +39,8 @@ defmodule EctoPGMQTest do
                partitioned?: false,
                unlogged?: false,
                metrics: %Metrics{},
-               notifications: nil
+               notifications: nil,
+               bindings: []
              } = EctoPGMQ.get_queue(Repo, "my_unpartitioned_queue")
     end
 
@@ -55,7 +57,8 @@ defmodule EctoPGMQTest do
                partitioned?: true,
                unlogged?: false,
                metrics: %Metrics{},
-               notifications: nil
+               notifications: nil,
+               bindings: []
              } = EctoPGMQ.get_queue(Repo, "my_partitioned_queue")
     end
 
@@ -72,7 +75,8 @@ defmodule EctoPGMQTest do
                partitioned?: false,
                unlogged?: true,
                metrics: %Metrics{},
-               notifications: nil
+               notifications: nil,
+               bindings: []
              } = EctoPGMQ.get_queue(Repo, "my_unlogged_queue")
     end
 
@@ -90,7 +94,32 @@ defmodule EctoPGMQTest do
                partitioned?: false,
                unlogged?: false,
                metrics: %Metrics{},
-               notifications: %Throttle{interval: ^interval}
+               notifications: %Throttle{interval: ^interval},
+               bindings: []
+             } = EctoPGMQ.get_queue(Repo, "my_queue")
+    end
+
+    test "will create a queue with bindings" do
+      # Validate that queue does not exist
+      assert EctoPGMQ.get_queue(Repo, "my_queue") == nil
+
+      EctoPGMQ.create_queue(Repo, "my_queue", %{bindings: ["#"]})
+
+      # Validate that queue has been created
+      assert %Queue{
+               name: "my_queue",
+               created_at: %DateTime{},
+               partitioned?: false,
+               unlogged?: false,
+               metrics: %Metrics{},
+               notifications: nil,
+               bindings: [
+                 %Binding{
+                   queue: "my_queue",
+                   pattern: "#",
+                   regex: %Regex{}
+                 }
+               ]
              } = EctoPGMQ.get_queue(Repo, "my_queue")
     end
 
@@ -195,6 +224,21 @@ defmodule EctoPGMQTest do
       # Validate that index still exists
       assert fifo_index?(Repo, ctx.queue.name)
     end
+
+    @tag queue_attributes: %{bindings: ["foo.*", "bar.*"]}
+    test "will update bindings for a queue", ctx do
+      # Validate queue bindings
+      assert ctx.queue.bindings
+             |> Enum.map(& &1.pattern)
+             |> same_elements?(["foo.*", "bar.*"])
+
+      queue = EctoPGMQ.update_queue(Repo, ctx.queue.name, %{bindings: ["bar.*", "baz.*"]})
+
+      # Validate that queue bindings have been updated
+      assert queue.bindings
+             |> Enum.map(& &1.pattern)
+             |> same_elements?(["bar.*", "baz.*"])
+    end
   end
 
   describe "archive_messages/4" do
@@ -247,6 +291,20 @@ defmodule EctoPGMQTest do
     end
 
     @tag queue_attributes: %{message_groups?: true}
+    test "will read messages from a queue with head grouping", ctx do
+      message_specs = [Message.build(%{"id" => 1}, "foo"), Message.build(%{"id" => 2}, "bar")]
+      EctoPGMQ.send_messages(Repo, ctx.queue.name, message_specs)
+      messages = all_queue_messages(Repo, ctx.queue.name)
+      response = EctoPGMQ.read_messages(Repo, ctx.queue.name, 300, 2, message_grouping: :head)
+
+      # Validate that messages are no longer visible
+      assert EctoPGMQ.read_messages(Repo, ctx.queue.name, 300, 1) == []
+
+      # Validate that the response contains the expected records
+      assert read_messages?(messages, response, 300, 2)
+    end
+
+    @tag queue_attributes: %{message_groups?: true}
     test "will read messages from a queue with throughput-optimized grouping", ctx do
       message_specs = [Message.build(%{"id" => 1}), Message.build(%{"id" => 2})]
       EctoPGMQ.send_messages(Repo, ctx.queue.name, message_specs)
@@ -280,6 +338,22 @@ defmodule EctoPGMQTest do
       messages = all_queue_messages(Repo, ctx.queue.name)
       poll_config = {Duration.new!(microsecond: {500_000, 3}), Duration.new!(second: 1)}
       response = EctoPGMQ.read_messages(Repo, ctx.queue.name, 300, 2, polling: poll_config)
+
+      # Validate that messages are no longer visible
+      assert EctoPGMQ.read_messages(Repo, ctx.queue.name, 300, 1) == []
+
+      # Validate that the response contains the expected records
+      assert read_messages?(messages, response, 300, 2)
+    end
+
+    @tag queue_attributes: %{message_groups?: true}
+    test "will read messages with a poll from a queue with head grouping", ctx do
+      message_specs = [Message.build(%{"id" => 1}, "foo"), Message.build(%{"id" => 2}, "bar")]
+      EctoPGMQ.send_messages(Repo, ctx.queue.name, message_specs)
+      messages = all_queue_messages(Repo, ctx.queue.name)
+      poll_config = {Duration.new!(microsecond: {500_000, 3}), Duration.new!(second: 1)}
+      opts = [polling: poll_config, message_grouping: :head]
+      response = EctoPGMQ.read_messages(Repo, ctx.queue.name, 300, 2, opts)
 
       # Validate that messages are no longer visible
       assert EctoPGMQ.read_messages(Repo, ctx.queue.name, 300, 1) == []

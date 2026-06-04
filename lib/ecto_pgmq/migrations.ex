@@ -141,9 +141,9 @@ defmodule EctoPGMQ.Migrations do
   ## Examples
 
   ```elixir
-  update_extension("1.9.0")
+  update_extension("1.11.2")
 
-  update_extension(Version.parse!("1.9.0"))
+  update_extension(Version.parse!("1.11.2"))
   ```
   """
   @doc group: "Extension Installation API"
@@ -167,7 +167,7 @@ defmodule EctoPGMQ.Migrations do
   > #### Shell Utility Requirement {: .warning}
   >
   > This function leverages the same adapter callback as
-  > [`mix ecto.load`](https://hexdocs.pm/ecto_sql/Mix.Tasks.Ecto.Load.html) and
+  > [`mix ecto.load`](https://hexdocs.pm/ecto_sql/Mix.Tasks.Ecto.Load.html) and,
   > therefore, requires that the `psql` shell utility is available.
 
   For more information, see [PGMQ Installation](#pgmq-installation).
@@ -178,7 +178,7 @@ defmodule EctoPGMQ.Migrations do
   path =
     :my_app
     |> :code.priv_dir()
-    |> Path.join("repo/extensions/pgmq--1.9.0.sql")
+    |> Path.join("repo/extensions/pgmq--1.11.2.sql")
 
   import_schema(path)
   ```

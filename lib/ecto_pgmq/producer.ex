@@ -125,6 +125,19 @@ if Code.ensure_loaded?(Broadway) do
     > All acknowledgement configuration is effectively ignored when deleting
     > messages on read.
 
+    ## Message Structure
+
+    The `Broadway.Message` structs emitted by this module have the following
+    structure:
+
+      * `:data` - The `t:EctoPGMQ.Message.payload/0` of the message.
+
+      * `:metadata` - A `t:map/0` containing the following fields:
+
+          * `:queue` - The `t:EctoPGMQ.Queue.name/0` of the source queue
+
+          * All `t:EctoPGMQ.Message.t/0` fields except `:payload`
+
     ## Options
 
     An `EctoPGMQ.Producer` can be started with the following options:
@@ -179,19 +192,6 @@ if Code.ensure_loaded?(Broadway) do
 
       * `:visibility_timeout` - A required `t:EctoPGMQ.visibility_timeout/0` for
         read operations.
-
-    ## Message Structure
-
-    The `Broadway.Message` structs emitted by this module have the following
-    structure:
-
-      * `:data` - The `t:EctoPGMQ.Message.payload/0` of the message.
-
-      * `:metadata` - A `t:map/0` containing the following fields:
-
-          * `:queue` - The `t:EctoPGMQ.Queue.name/0` of the source queue
-
-          * All `t:EctoPGMQ.Message.t/0` fields except `:payload`
     """
 
     @behaviour Broadway.Acknowledger
@@ -524,6 +524,7 @@ if Code.ensure_loaded?(Broadway) do
       :erlang.start_timer(time, self(), :read)
     end
 
+    # TODO(Gordon) - update comment to ignore only specific check
     # credo:disable-for-lines:30
     defp start_worker(state, quantity) do
       task =

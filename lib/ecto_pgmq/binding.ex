@@ -25,8 +25,10 @@ defmodule EctoPGMQ.Binding do
 
   Binding patterns must meet the following conditions:
 
+  TODO(Gordon) - validate the wildcard docs
+
     * Must only contain alphanumeric characters, dots (`.`), hyphens (`-`),
-      underscores (`_`), and wildcards (`*` and `#`).
+      underscores (`_`), and wildcards (`*` and `\#`).
 
     * Cannot start with a dot.
 

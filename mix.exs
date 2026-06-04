@@ -85,7 +85,16 @@ defmodule EctoPGMQ.MixProject do
       extras: [
         "README.md",
         "CONTRIBUTING.md",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "guides/pgmq_installation.md",
+        "guides/misc_pgmq_features.md",
+        "guides/notifications.md",
+        "guides/fifo_message_groups.md",
+        "guides/message_routing.md",
+        "guides/custom_payload_types.md"
+      ],
+      groups_for_extras: [
+        Guides: Path.wildcard("guides/*.md")
       ],
       groups_for_modules: [
         Core: [
@@ -96,6 +105,7 @@ defmodule EctoPGMQ.MixProject do
           EctoPGMQ.Producer
         ],
         Schemas: [
+          EctoPGMQ.Binding,
           EctoPGMQ.Message,
           EctoPGMQ.Metrics,
           EctoPGMQ.Queue,
@@ -112,7 +122,6 @@ defmodule EctoPGMQ.MixProject do
 
   defp package do
     [
-      files: ["lib", "mix.exs", "README*", "LICENSE"],
       maintainers: ["Gordon Woolbert"],
       licenses: ["MIT"],
       links: %{"GitHub" => @github}
