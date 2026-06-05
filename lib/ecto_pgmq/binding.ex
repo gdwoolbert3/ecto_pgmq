@@ -78,22 +78,22 @@ defmodule EctoPGMQ.Binding do
 
   ```elixir
   # Casting a Regex struct
-  where(query(), [b], b.regex == ^~r/^.*$/)
+  where(Binding.query(), [b], b.regex == ^~r/^.*$/)
 
   # Casting a binary source
-  where(query(), [b], b.regex == "^.*$")
+  where(Binding.query(), [b], b.regex == "^.*$")
   ```
 
   It is also possible to check for a regex match using the tools provided by
   `Ecto.Query`:
 
   ```elixir
-  where(query(), [b], fragment("? ~ ?", "my.routing.key", b.regex))
+  where(Binding.query(), [b], fragment("? ~ ?", "my.routing.key", b.regex))
   ```
 
   ## Examples
 
-      iex> [%Binding{} | _] = Repo.all(query())
+      iex> [%Binding{} | _] = Repo.all(Binding.query())
   """
   @spec query :: Ecto.Query.t()
   defdelegate query, to: EctoPGMQ.PGMQ, as: :list_topic_bindings_query

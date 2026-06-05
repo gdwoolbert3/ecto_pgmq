@@ -55,15 +55,15 @@ defmodule EctoPGMQ.Throttle do
 
   ```elixir
   # Casting a Duration struct
-  where(query(), [t], t.interval >= ^Duration.new!(hour: 1))
+  where(Throttle.query(), [t], t.interval >= ^Duration.new!(hour: 1))
 
   # Casting an integer time
-  where(query(), [t], t.interval <= 250)
+  where(Throttle.query(), [t], t.interval <= 250)
   ```
 
   ## Examples
 
-      iex> [%Throttle{} | _] = Repo.all(query())
+      iex> [%Throttle{} | _] = Repo.all(Throttle.query())
   """
   @spec query :: Ecto.Query.t()
   defdelegate query, to: EctoPGMQ.PGMQ, as: :list_notify_insert_throttles_query

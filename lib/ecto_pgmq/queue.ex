@@ -5,7 +5,7 @@ defmodule EctoPGMQ.Queue do
   > #### Read-Only {: .warning}
   >
   > This schema should be treated as read-only. Queues can be configured with
-  `EctoPGMQ.create_queue/4` and `EctoPGMQ.update_queue/4`.
+  > `EctoPGMQ.create_queue/4` and `EctoPGMQ.update_queue/4`.
   """
 
   use Ecto.Schema
@@ -62,7 +62,7 @@ defmodule EctoPGMQ.Queue do
 
   ## Examples
 
-      iex> [%Queue{} | _] = Repo.all(query())
+      iex> [%Queue{} | _] = Repo.all(Queue.query())
   """
   @spec query :: Ecto.Query.t()
   def query do

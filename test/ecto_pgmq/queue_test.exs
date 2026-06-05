@@ -3,7 +3,7 @@ defmodule EctoPGMQ.QueueTest do
 
   alias EctoPGMQ.Queue
 
-  doctest Queue, import: true
+  doctest Queue
 
   describe "query/0" do
     @describetag queue: false

@@ -5,7 +5,7 @@ defmodule EctoPGMQ.MetricsTest do
 
   alias EctoPGMQ.Metrics
 
-  doctest Metrics, import: true
+  doctest Metrics
 
   describe "query/0" do
     @tag queue: false
@@ -21,8 +21,8 @@ defmodule EctoPGMQ.MetricsTest do
     end
 
     test "will allow filtering on message age field with a Duration struct", ctx do
-      message_specs = [Message.build(%{"id" => 1}), Message.build(%{"id" => 2})]
-      EctoPGMQ.send_messages(Repo, ctx.queue.name, message_specs)
+      messages = [%{"id" => 1}, %{"id" => 2}]
+      EctoPGMQ.send_messages(Repo, ctx.queue.name, messages)
 
       # Validate that Duration struct can be used in query
       assert Metrics.query()
@@ -31,8 +31,8 @@ defmodule EctoPGMQ.MetricsTest do
     end
 
     test "will allow filtering on message age field with an integer time", ctx do
-      message_specs = [Message.build(%{"id" => 1}), Message.build(%{"id" => 2})]
-      EctoPGMQ.send_messages(Repo, ctx.queue.name, message_specs)
+      messages = [%{"id" => 1}, %{"id" => 2}]
+      EctoPGMQ.send_messages(Repo, ctx.queue.name, messages)
 
       # Validate that integer time can be used in query
       assert Metrics.query()

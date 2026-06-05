@@ -513,6 +513,17 @@ defmodule EctoPGMQTest do
              |> all_queue_messages(ctx.queue.name, TestType)
              |> same_messages?(message_ids, message_specs)
     end
+
+    @tag queue_attributes: %{bindings: ["#"]}
+    test "will send messages with a routing key", ctx do
+      message_specs = [Message.build(%{"id" => 1}), Message.build(%{"id" => 2})]
+      message_ids = EctoPGMQ.send_messages(Repo, {:routing_key, "my.routing.key"}, message_specs)
+
+      # Validate that all of the messages are in the queue
+      assert Repo
+             |> all_queue_messages(ctx.queue.name)
+             |> same_messages?(message_ids, message_specs)
+    end
   end
 
   describe "update_messages/5" do

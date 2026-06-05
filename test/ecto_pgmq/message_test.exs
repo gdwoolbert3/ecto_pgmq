@@ -6,40 +6,49 @@ defmodule EctoPGMQ.MessageTest do
   alias EctoPGMQ.PGMQ
   alias EctoPGMQ.TestType
 
-  doctest Message, import: true
+  doctest Message
 
   describe "archive_query/1" do
     test "will return a query for archived messages", ctx do
-      message_specs = [Message.build(%{"id" => 1}), Message.build(%{"id" => 2})]
-      message_ids = EctoPGMQ.send_messages(Repo, ctx.queue.name, message_specs)
+      messages = [Message.build(%{"id" => 1}), Message.build(%{"id" => 2})]
+      response = EctoPGMQ.send_messages(Repo, ctx.queue.name, messages)
+
+      assert {:ok, message_ids} = Map.fetch(response, ctx.queue.name)
+
       EctoPGMQ.archive_messages(Repo, ctx.queue.name, message_ids)
 
       # Validate that all of the messages are returned by the query
       assert ctx.queue.name
              |> Message.archive_query()
              |> Repo.all()
-             |> same_messages?(message_ids, message_specs)
+             |> same_messages?(message_ids, messages)
     end
 
     test "will return a query for archived messages with a custom payload type", ctx do
       today = Date.utc_today()
       range = Date.range(today, Date.shift(today, day: 25), 5)
-      message_specs = [Message.build(range), Message.build(range)]
-      message_ids = EctoPGMQ.send_messages(Repo, ctx.queue.name, message_specs, payload_type: TestType)
+      messages = [Message.build(range), Message.build(range)]
+      response = EctoPGMQ.send_messages(Repo, ctx.queue.name, messages, payload_type: TestType)
+
+      assert {:ok, message_ids} = Map.fetch(response, ctx.queue.name)
+
       EctoPGMQ.archive_messages(Repo, ctx.queue.name, message_ids)
 
       # Validate that all of the messages are returned by the query
       assert ctx.queue.name
              |> Message.archive_query(payload_type: TestType)
              |> Repo.all()
-             |> same_messages?(message_ids, message_specs)
+             |> same_messages?(message_ids, messages)
     end
 
     test "will allow filtering on payload field with a custom payload type", ctx do
       today = Date.utc_today()
       range = Date.range(today, Date.shift(today, day: 25), 5)
-      message_specs = [Message.build(range), Message.build(range)]
-      message_ids = EctoPGMQ.send_messages(Repo, ctx.queue.name, message_specs, payload_type: TestType)
+      messages = [Message.build(range), Message.build(range)]
+      response = EctoPGMQ.send_messages(Repo, ctx.queue.name, messages, payload_type: TestType)
+
+      assert {:ok, message_ids} = Map.fetch(response, ctx.queue.name)
+
       EctoPGMQ.archive_messages(Repo, ctx.queue.name, message_ids)
 
       # Validate that custom payload can be used in query
@@ -47,12 +56,15 @@ defmodule EctoPGMQ.MessageTest do
              |> Message.archive_query(payload_type: TestType)
              |> where([m], m.payload == type(^range, TestType))
              |> Repo.all()
-             |> same_messages?(message_ids, message_specs)
+             |> same_messages?(message_ids, messages)
     end
 
     test "will allow filtering on archive timestamp field", ctx do
-      message_specs = [Message.build(%{"id" => 1}), Message.build(%{"id" => 2})]
-      message_ids = EctoPGMQ.send_messages(Repo, ctx.queue.name, message_specs)
+      messages = [Message.build(%{"id" => 1}), Message.build(%{"id" => 2})]
+      response = EctoPGMQ.send_messages(Repo, ctx.queue.name, messages)
+
+      assert {:ok, message_ids} = Map.fetch(response, ctx.queue.name)
+
       EctoPGMQ.archive_messages(Repo, ctx.queue.name, message_ids)
       cutoff = DateTime.shift(DateTime.utc_now(), second: 5)
 
@@ -61,25 +73,30 @@ defmodule EctoPGMQ.MessageTest do
              |> Message.archive_query()
              |> where([m], m.archived_at <= ^cutoff)
              |> Repo.all()
-             |> same_messages?(message_ids, message_specs)
+             |> same_messages?(message_ids, messages)
     end
   end
 
   describe "queue_query/2" do
     test "will return a query for queue messages", ctx do
-      message_specs = [Message.build(%{"id" => 1}), Message.build(%{"id" => 2})]
-      message_ids = EctoPGMQ.send_messages(Repo, ctx.queue.name, message_specs)
+      messages = [Message.build(%{"id" => 1}), Message.build(%{"id" => 2})]
+      response = EctoPGMQ.send_messages(Repo, ctx.queue.name, messages)
+
+      assert {:ok, message_ids} = Map.fetch(response, ctx.queue.name)
 
       # Validate that all of the messages are returned by the query
       assert ctx.queue.name
              |> Message.queue_query()
              |> Repo.all()
-             |> same_messages?(message_ids, message_specs)
+             |> same_messages?(message_ids, messages)
     end
 
     test "will return a query with the same structure as an archive query", ctx do
-      message_specs = [Message.build(%{"id" => 1}), Message.build(%{"id" => 2})]
-      ([_ | archive_ids] = message_ids) = EctoPGMQ.send_messages(Repo, ctx.queue.name, message_specs)
+      messages = [Message.build(%{"id" => 1}), Message.build(%{"id" => 2})]
+      response = EctoPGMQ.send_messages(Repo, ctx.queue.name, messages)
+
+      assert {:ok, [_ | archive_ids] = message_ids} = Map.fetch(response, ctx.queue.name)
+
       EctoPGMQ.archive_messages(Repo, ctx.queue.name, archive_ids)
 
       # Validate that queue query can be unioned with archive query
@@ -90,70 +107,89 @@ defmodule EctoPGMQ.MessageTest do
              |> union_all(^Message.archive_query(ctx.queue.name))
              |> order_by(fragment("msg_id"))
              |> Repo.all()
-             |> same_messages?(message_ids, message_specs)
+             |> same_messages?(message_ids, messages)
     end
 
     test "will return a query for queue messages with a custom payload type", ctx do
       today = Date.utc_today()
       range = Date.range(today, Date.shift(today, day: 25), 5)
-      message_specs = [Message.build(range), Message.build(range)]
-      message_ids = EctoPGMQ.send_messages(Repo, ctx.queue.name, message_specs, payload_type: TestType)
+      messages = [Message.build(range), Message.build(range)]
+      response = EctoPGMQ.send_messages(Repo, ctx.queue.name, messages, payload_type: TestType)
+
+      assert {:ok, message_ids} = Map.fetch(response, ctx.queue.name)
 
       # Validate that all of the messages are returned by the query
       assert ctx.queue.name
              |> Message.queue_query(payload_type: TestType)
              |> Repo.all()
-             |> same_messages?(message_ids, message_specs)
+             |> same_messages?(message_ids, messages)
     end
 
     test "will allow filtering on payload field with a custom payload type", ctx do
       today = Date.utc_today()
       range = Date.range(today, Date.shift(today, day: 25), 5)
-      message_specs = [Message.build(range), Message.build(range)]
-      message_ids = EctoPGMQ.send_messages(Repo, ctx.queue.name, message_specs, payload_type: TestType)
+      messages = [Message.build(range), Message.build(range)]
+      response = EctoPGMQ.send_messages(Repo, ctx.queue.name, messages, payload_type: TestType)
+
+      assert {:ok, message_ids} = Map.fetch(response, ctx.queue.name)
 
       # Validate that custom payload can be used in query
       assert ctx.queue.name
              |> Message.queue_query(payload_type: TestType)
              |> where([m], m.payload == type(^range, TestType))
              |> Repo.all()
-             |> same_messages?(message_ids, message_specs)
+             |> same_messages?(message_ids, messages)
     end
   end
 
   describe "build/2" do
     @describetag queue: false
 
-    test "will override group in headers with given group" do
-      headers = %{PGMQ.group_header() => "bar"}
-      spec = Message.build(%{"id" => 1}, "foo", headers)
-
-      assert {:spec, %{"id" => 1}, headers} = spec
-      assert Map.fetch!(headers, PGMQ.group_header()) == "foo"
+    test "will create a specification from a payload" do
+      assert Message.build(%{"id" => 1}) == {:spec, %{"id" => 1}, nil}
     end
 
-    test "will extract group from headers if not specified" do
-      headers = %{PGMQ.group_header() => "foo"}
-      spec = Message.build(%{"id" => 1}, nil, headers)
+    test "will create a specification from a payload and a group" do
+      spec = Message.build(%{"id" => 1}, "A")
 
-      assert spec == {:spec, %{"id" => 1}, headers}
+      assert spec == {:spec, %{"id" => 1}, %{PGMQ.group_header() => "A"}}
+    end
+
+    test "will create a specification from a payload and headers" do
+      spec = Message.build(%{"id" => 1}, %{"header" => "foo"})
+
+      assert spec == {:spec, %{"id" => 1}, %{"header" => "foo"}}
+    end
+
+    test "will create a specification from a paylod, a group, and headers" do
+      spec = Message.build(%{"id" => 1}, "B", %{PGMQ.group_header() => "A", "header" => "foo"})
+
+      assert spec == {:spec, %{"id" => 1}, %{PGMQ.group_header() => "B", "header" => "foo"}}
     end
   end
 
   describe "group/1" do
+    @describetag queue: false
+
+    @tag queue: true
     test "will extract the group from a message", ctx do
-      message_specs = [Message.build(%{"id" => 1}, "foo")]
-      [message_id] = EctoPGMQ.send_messages(Repo, ctx.queue.name, message_specs)
+      messages = [Message.build(%{"id" => 1}, "A")]
+      response = EctoPGMQ.send_messages(Repo, ctx.queue.name, messages)
+
+      assert {:ok, [message_id]} = Map.fetch(response, ctx.queue.name)
 
       assert ctx.queue.name
              |> Message.queue_query()
              |> Repo.get(message_id)
-             |> Message.group() == "foo"
+             |> Message.group() == "A"
     end
 
+    @tag queue: true
     test "will not extract the group from a message without a group", ctx do
-      message_specs = [Message.build(%{"id" => 1}, nil, %{"my_header" => "bar"})]
-      [message_id] = EctoPGMQ.send_messages(Repo, ctx.queue.name, message_specs)
+      messages = [Message.build(%{"id" => 1}, %{"header" => "foo"})]
+      response = EctoPGMQ.send_messages(Repo, ctx.queue.name, messages)
+
+      assert {:ok, [message_id]} = Map.fetch(response, ctx.queue.name)
 
       assert ctx.queue.name
              |> Message.queue_query()
@@ -162,9 +198,11 @@ defmodule EctoPGMQ.MessageTest do
              |> is_nil()
     end
 
+    @tag queue: true
     test "will not extract the group from a message without headers", ctx do
-      message_specs = [Message.build(%{"id" => 1})]
-      [message_id] = EctoPGMQ.send_messages(Repo, ctx.queue.name, message_specs)
+      response = EctoPGMQ.send_messages(Repo, ctx.queue.name, [%{"id" => 1}])
+
+      assert {:ok, [message_id]} = Map.fetch(response, ctx.queue.name)
 
       assert ctx.queue.name
              |> Message.queue_query()
@@ -174,13 +212,13 @@ defmodule EctoPGMQ.MessageTest do
     end
 
     test "will extract the group from a message spec" do
-      message_spec = Message.build(%{"id" => 1}, "foo")
+      message_spec = Message.build(%{"id" => 1}, "A")
 
-      assert Message.group(message_spec) == "foo"
+      assert Message.group(message_spec) == "A"
     end
 
     test "will not extract the group from a message spec without a group" do
-      message_spec = Message.build(%{"id" => 1}, nil, %{"my_header" => "bar"})
+      message_spec = Message.build(%{"id" => 1}, %{"header" => "foo"})
 
       assert Message.group(message_spec) == nil
     end
@@ -189,6 +227,22 @@ defmodule EctoPGMQ.MessageTest do
       message_spec = Message.build(%{"id" => 1})
 
       assert Message.group(message_spec) == nil
+    end
+
+    test "will extract the group from headers" do
+      headers = %{PGMQ.group_header() => "A"}
+
+      assert Message.group(headers) == "A"
+    end
+
+    test "will not extract the group from headers without a group" do
+      headers = %{"header" => "foo"}
+
+      assert Message.group(headers) == nil
+    end
+
+    test "will not extract a group from nothing" do
+      assert Message.group(nil) == nil
     end
   end
 end

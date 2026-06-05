@@ -13,25 +13,27 @@ defmodule EctoPGMQ.ProducerTest do
 
     # Validate that producer can read and acknowledge messages
     payloads = [Message.build(%{"encoded_pid" => encoded_pid})]
-    [message_id] = EctoPGMQ.send_messages(Repo, ctx.queue.name, payloads)
+    response = EctoPGMQ.send_messages(Repo, ctx.queue.name, payloads)
 
+    assert {:ok, [message_id]} = Map.fetch(response, ctx.queue.name)
     assert_receive {:success, ^message_id}
     assert poll_queue_empty?(ctx.queue.name)
     refute archived_message_exists?(ctx.queue.name, message_id)
 
     # Validate that producer can configure acknowledgements
     payloads = [Message.build(%{"encoded_pid" => encoded_pid, "archive" => true})]
-    [message_id] = EctoPGMQ.send_messages(Repo, ctx.queue.name, payloads)
+    response = EctoPGMQ.send_messages(Repo, ctx.queue.name, payloads)
 
+    assert {:ok, [message_id]} = Map.fetch(response, ctx.queue.name)
     assert_receive {:success, ^message_id}
     assert poll_queue_empty?(ctx.queue.name)
     assert archived_message_exists?(ctx.queue.name, message_id)
 
     # Validate that producer can acknowledge failed messages
     payloads = [Message.build(%{"encoded_pid" => encoded_pid, "fail" => true})]
-    [message_id] = EctoPGMQ.send_messages(Repo, ctx.queue.name, payloads)
+    response = EctoPGMQ.send_messages(Repo, ctx.queue.name, payloads)
 
-    assert_receive {:failure, ^message_id}
+    assert {:ok, [message_id]} = Map.fetch(response, ctx.queue.name)
     assert poll_queue_empty?(ctx.queue.name)
     assert archived_message_exists?(ctx.queue.name, message_id)
   end

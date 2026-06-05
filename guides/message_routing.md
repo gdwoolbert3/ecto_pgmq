@@ -1,3 +1,5 @@
 # Message Routing
 
-TODO(Gordon) - Fill out this doc
+This guide covers the usage of topic-based routing.
+
+TODO(Gordon) - update when support is added to lib

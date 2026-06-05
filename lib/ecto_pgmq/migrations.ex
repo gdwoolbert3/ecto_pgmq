@@ -19,7 +19,7 @@ defmodule EctoPGMQ.Migrations do
   ## Examples
 
   ```elixir
-  create_queue("my_queue")
+  Migrations.create_queue("my_queue")
   ```
   """
   @doc group: "EctoPGMQ API"
@@ -43,7 +43,7 @@ defmodule EctoPGMQ.Migrations do
   ## Examples
 
   ```elixir
-  drop_queue("my_queue")
+  Migrations.drop_queue("my_queue")
   ```
   """
   @doc group: "EctoPGMQ API"
@@ -63,7 +63,7 @@ defmodule EctoPGMQ.Migrations do
   ## Examples
 
   ```elixir
-  update_queue("my_queue", %{notifications: 1_000})
+  Migrations.update_queue("my_queue", %{notifications: 1_000})
   ```
   """
   @doc group: "EctoPGMQ API"
@@ -87,7 +87,7 @@ defmodule EctoPGMQ.Migrations do
   ## Examples
 
   ```elixir
-  create_extension()
+  Migrations.create_extension()
   ```
   """
   @doc group: "Extension Installation API"
@@ -107,7 +107,7 @@ defmodule EctoPGMQ.Migrations do
   ## Examples
 
   ```elixir
-  drop_extension()
+  Migrations.drop_extension()
   ```
   """
   @doc group: "Extension Installation API"
@@ -124,7 +124,7 @@ defmodule EctoPGMQ.Migrations do
   ## Examples
 
   ```elixir
-  update_extension()
+  Migrations.update_extension()
   ```
   """
   @doc group: "Extension Installation API"
@@ -141,9 +141,9 @@ defmodule EctoPGMQ.Migrations do
   ## Examples
 
   ```elixir
-  update_extension("1.11.2")
+  Migrations.update_extension("1.11.2")
 
-  update_extension(Version.parse!("1.11.2"))
+  Migrations.update_extension(Version.parse!("1.11.2"))
   ```
   """
   @doc group: "Extension Installation API"
@@ -180,7 +180,7 @@ defmodule EctoPGMQ.Migrations do
     |> :code.priv_dir()
     |> Path.join("repo/extensions/pgmq--1.11.2.sql")
 
-  import_schema(path)
+  Migrations.import_schema(path)
   ```
   """
   @doc group: "SQL Installation API"
@@ -209,7 +209,7 @@ defmodule EctoPGMQ.Migrations do
   ## Examples
 
   ```elixir
-  drop_schema()
+  Migrations.drop_schema()
   ```
   """
   @doc group: "SQL Installation API"

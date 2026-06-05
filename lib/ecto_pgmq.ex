@@ -170,15 +170,20 @@ defmodule EctoPGMQ do
   TODO(Gordon) - think about places where it makes sense to accept either queue or queue name?
   TODO(Gordon) - use aliases in doctests, not imports?
   TODO(Gordon) - consider creating specific docs for FIFO groups, PGMQ installation, and custom payload types
+  TODO(Gordon) - use "A", "B", "C" for groups instead of "foo", "bar", "baz"
+  TODO(Gordon) - consider allowing maps when sending messages
+  TODO(Gordon) - move read-only warning out here
+  TODO(Gordon) - support optionally pulling extension files from PGMQ GH?
   """
 
   alias Ecto.Repo
   alias EctoPGMQ.Binding
   alias EctoPGMQ.DurationType
-  alias EctoPGMQ.Message
   alias EctoPGMQ.PGMQ
   alias EctoPGMQ.Queue
   alias EctoPGMQ.Throttle
+
+  require EctoPGMQ.Message, as: Message
 
   ################################
   # Types
@@ -200,6 +205,12 @@ defmodule EctoPGMQ do
   For more information about this type, see `t:EctoPGMQ.PGMQ.delay/0`.
   """
   @type delay :: Duration.t() | PGMQ.delay()
+
+  @typedoc "A message destination."
+  @type destination :: Queue.name() | {:queue, Queue.name()} | {:routing_key, PGMQ.routing_key()}
+
+  @typedoc "A message specification."
+  @type message_spec :: PGMQ.payload() | Message.specification()
 
   @typedoc """
   Message update attributes.
@@ -523,7 +534,7 @@ defmodule EctoPGMQ do
 
   ## Examples
 
-      iex> send_messages(Repo, "my_queue", [Message.build(%{"foo" => 1})])
+      iex> send_messages(Repo, "my_queue", [%{"foo" => 1}])
       iex> purge_queue(Repo, "my_queue")
       1
   """
@@ -626,7 +637,7 @@ defmodule EctoPGMQ do
 
   ## Examples
 
-      iex> message_ids = send_messages(Repo, "my_queue", [Message.build(%{"foo" => 1})])
+      iex> message_ids = send_messages(Repo, "my_queue", [%{"foo" => 1}])
       iex> archive_messages(Repo, "my_queue", message_ids)
       :ok
   """
@@ -645,7 +656,7 @@ defmodule EctoPGMQ do
 
   ## Examples
 
-      iex> message_ids = send_messages(Repo, "my_queue", [Message.build(%{"foo" => 1})])
+      iex> message_ids = send_messages(Repo, "my_queue", [%{"foo" => 1}])
       iex> delete_messages(Repo, "my_queue", message_ids)
       :ok
   """
@@ -664,7 +675,7 @@ defmodule EctoPGMQ do
 
   ## Examples
 
-      iex> send_messages(Repo, "my_queue", [Message.build(%{"foo" => 1})])
+      iex> send_messages(Repo, "my_queue", [%{"foo" => 1}])
       iex> [%Message{reads: 1}] = read_messages(Repo, "my_queue", 5, 2)
   """
   @doc group: "Message API"
@@ -728,7 +739,8 @@ defmodule EctoPGMQ do
   Sends messages to the given queue.
 
   TODO(Gordon) - document and add payload type options
-  TODO(Gordon) - consider supporting non_struct_maps in addition to message specs?
+  TODO(Gordon) - update all locations where Message.build/3 is being used with only a payload
+  TODO(Gordon) - support queue OR routing key destinations
 
   ## Options
 
@@ -740,24 +752,44 @@ defmodule EctoPGMQ do
   ## Examples
 
       iex> delay = Duration.new!(hour: 1)
-      iex> [message_id] = send_messages(Repo, "my_queue", [Message.build(%{"foo" => 1})], delay: delay)
+      iex> [message_id] = send_messages(Repo, "my_queue", [%{"foo" => 1}], delay: delay)
       iex> is_integer(message_id)
       true
   """
   @doc group: "Message API"
-  @spec send_messages(Repo.t(), Queue.name(), [Message.specification()]) :: [Message.id()]
+  @spec send_messages(Repo.t(), destination(), [message_spec()]) :: PGMQ.queue_message_ids()
   @spec send_messages(
           Repo.t(),
-          Queue.name(),
-          [Message.specification()],
+          destination(),
+          [message_spec()],
           [{:delay, delay()} | PGMQ.query_opt()]
-        ) :: [Message.id()]
-  def send_messages(repo, queue, messages, opts \\ []) do
+        ) :: PGMQ.queue_message_ids()
+  def send_messages(repo, destination, messages, opts \\ []) do
     {delay, opts} = Keyword.pop(opts, :delay, 0)
     delay = maybe_to_time(delay, :second)
     {payload_type, opts} = Keyword.pop(opts, :payload_type, :map)
-    {payloads, headers} = Message.to_pgmq_payloads_and_headers(messages, payload_type)
-    PGMQ.send_batch(repo, queue, payloads, headers, delay, opts)
+
+    {payloads, headers} =
+      messages
+      |> Enum.map(fn
+        spec when Message.is_specification(spec) -> spec
+        payload when is_non_struct_map(payload) -> Message.build(payload)
+      end)
+      |> Message.to_pgmq_payloads_and_headers(payload_type)
+
+    destination
+    |> case do
+      queue when is_binary(queue) -> {:queue, queue}
+      destination -> destination
+    end
+    |> case do
+      {:queue, queue} ->
+        message_ids = PGMQ.send_batch(repo, queue, payloads, headers, delay, opts)
+        %{queue => message_ids}
+
+      {:routing_key, routing_key} ->
+        PGMQ.send_batch_topic(repo, routing_key, payloads, headers, delay, opts)
+    end
   end
 
   @doc """
@@ -771,7 +803,7 @@ defmodule EctoPGMQ do
   ## Examples
 
       iex> visibility_timeout = Duration.new!(minute: 5)
-      iex> message_ids = send_messages(Repo, "my_queue", [Message.build(%{"foo" => 1})])
+      iex> message_ids = send_messages(Repo, "my_queue", [%{"foo" => 1}])
       iex> update_messages(Repo, "my_queue", message_ids, %{visibility_timeout: visibility_timeout})
       :ok
   """

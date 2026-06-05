@@ -105,12 +105,10 @@ defmodule EctoPGMQ.Message do
   end
 
   ################################
-  # Public Guards
+  # Protected Guards
   ################################
 
-  @doc """
-  TODO(Gordon) - Add this
-  """
+  @doc false
   @spec is_specification(term()) :: Macro.t()
   defguard is_specification(term) when Record.is_record(term, :spec)
 
@@ -130,10 +128,10 @@ defmodule EctoPGMQ.Message do
 
   ## Examples
 
-      iex> message_specs = [Message.build(%{"foo" => 1})]
-      iex> message_ids = EctoPGMQ.send_messages(Repo, "my_queue", message_specs)
-      iex> EctoPGMQ.archive_messages(Repo, "my_queue", message_ids)
-      iex> [%Message{}] = Repo.all(archive_query("my_queue"))
+      iex> messages = [%{"id" => 1}]
+      iex> %{"my_queue" => ids} = EctoPGMQ.send_messages(Repo, "my_queue", messages)
+      iex> EctoPGMQ.archive_messages(Repo, "my_queue", ids)
+      iex> [%Message{}] = Repo.all(Message.archive_query("my_queue"))
   """
   @doc group: "Query API"
   @spec archive_query(Queue.name()) :: Ecto.Query.t()
@@ -166,9 +164,9 @@ defmodule EctoPGMQ.Message do
 
   ## Examples
 
-      iex> message_specs = [Message.build(%{"foo" => 1})]
-      iex> EctoPGMQ.send_messages(Repo, "my_queue", message_specs)
-      iex> [%Message{}] = Repo.all(queue_query("my_queue"))
+      iex> messages = [%{"id" => 1}]
+      iex> EctoPGMQ.send_messages(Repo, "my_queue", messages)
+      iex> [%Message{}] = Repo.all(Message.queue_query("my_queue"))
   """
   @doc group: "Query API"
   @spec queue_query(Queue.name()) :: Ecto.Query.t()
@@ -205,17 +203,17 @@ defmodule EctoPGMQ.Message do
 
   ## Examples
 
-      iex> build(%{"foo" => 1})
-      {:spec, %{"foo" => 1}, nil}
+      iex> Message.build(%{"id" => 1})
+      {:spec, %{"id" => 1}, nil}
 
-      iex> build(%{"foo" => 1}, %{"bar" => "baz"})
-      {:spec, %{"foo" => 1}, %{"bar" => "baz"}}
+      iex> Message.build(%{"id" => 1}, %{"header" => "foo"})
+      {:spec, %{"id" => 1}, %{"header" => "foo"}}
 
-      iex> build(%{"foo" => 1}, "bar")
-      {:spec, %{"foo" => 1}, %{"#{PGMQ.group_header()}" => "bar"}}
+      iex> Message.build(%{"id" => 1}, "A")
+      {:spec, %{"id" => 1}, %{"#{PGMQ.group_header()}" => "A"}}
 
-      iex> build(%{"foo" => 1}, "bar", %{"#{PGMQ.group_header()}" => "baz"})
-      {:spec, %{"foo" => 1}, %{"#{PGMQ.group_header()}" => "bar"}}
+      iex> Message.build(%{"id" => 1}, "A", %{"#{PGMQ.group_header()}" => "B"})
+      {:spec, %{"id" => 1}, %{"#{PGMQ.group_header()}" => "A"}}
   """
   @doc group: "Message API"
   @spec build(payload() | nil) :: specification()
@@ -247,27 +245,35 @@ defmodule EctoPGMQ.Message do
 
   ## Examples
 
-      iex> message_spec = build(%{"foo" => 1}, "bar")
-      iex> [message_id] = EctoPGMQ.send_messages(Repo, "my_queue", [message_spec])
-      iex> message = Repo.get(queue_query("my_queue"), message_id)
-      iex> group(message)
-      "bar"
+      iex> messages = [Message.build(%{"id" => 1}, "A")]
+      iex> %{"my_queue" => [id]} = EctoPGMQ.send_messages(Repo, "my_queue", messages)
+      iex> message = Repo.get(Message.queue_query("my_queue"), id)
+      iex> Message.group(message)
+      "A"
 
-      iex> message_spec = build(%{"foo" => 1}, "bar")
-      iex> group(message_spec)
-      "bar"
+      iex> message_spec = Message.build(%{"id" => 1}, "A")
+      iex> Message.group(message_spec)
+      "A"
+
+      iex> headers = %{"header" => "foo"}
+      iex> Message.group(headers)
+      nil
   """
   @doc group: "Message API"
-  @spec group(t() | specification()) :: group() | nil
-  def group(%__MODULE__{} = message) do
-    group_from_headers(message.headers)
-  end
+  @spec group(t() | specification() | headers() | nil) :: group() | nil
+  def group(%__MODULE__{} = message), do: group(message.headers)
 
   def group(spec) when Record.is_record(spec, :spec) do
     spec
     |> spec(:headers)
-    |> group_from_headers()
+    |> group()
   end
+
+  def group(headers) when is_non_struct_map(headers) do
+    Map.get(headers, PGMQ.group_header())
+  end
+
+  def group(nil), do: nil
 
   ################################
   # Protected Utility API
@@ -303,12 +309,6 @@ defmodule EctoPGMQ.Message do
   defp message_table_query(table, ecto_type) do
     PGMQ.message_query_select({table, __MODULE__}, ecto_type)
   end
-
-  defp group_from_headers(headers) when is_map(headers) do
-    Map.get(headers, PGMQ.group_header())
-  end
-
-  defp group_from_headers(nil), do: nil
 
   defp payload_type_to_ecto_type({type, opts}) do
     Ecto.ParameterizedType.init(type, opts)

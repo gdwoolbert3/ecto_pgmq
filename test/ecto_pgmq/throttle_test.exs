@@ -5,7 +5,7 @@ defmodule EctoPGMQ.ThrottleTest do
 
   alias EctoPGMQ.Throttle
 
-  doctest Throttle, import: true
+  doctest Throttle
 
   @moduletag queue_attributes: %{notifications: 250}
 

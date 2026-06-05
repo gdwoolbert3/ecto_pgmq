@@ -5,7 +5,7 @@ defmodule EctoPGMQ.BindingTest do
 
   alias EctoPGMQ.Binding
 
-  doctest Binding, import: true
+  doctest Binding
 
   @moduletag queue_attributes: %{bindings: ["#"]}
 

@@ -59,15 +59,15 @@ defmodule EctoPGMQ.Metrics do
 
   ```elixir
   # Casting a Duration struct
-  where(query(), [m], m.oldest_message_age >= ^Duration.new!(hour: 1))
+  where(Metrics.query(), [m], m.oldest_message_age >= ^Duration.new!(hour: 1))
 
   # Casting an integer time
-  where(query(), [m], m.newest_message_age <= 30)
+  where(Metrics.query(), [m], m.newest_message_age <= 30)
   ```
 
   ## Examples
 
-      iex> [%Metrics{} | _] = Repo.all(query())
+      iex> [%Metrics{} | _] = Repo.all(Metrics.query())
   """
   @spec query :: Ecto.Query.t()
   defdelegate query, to: EctoPGMQ.PGMQ, as: :metrics_all_query

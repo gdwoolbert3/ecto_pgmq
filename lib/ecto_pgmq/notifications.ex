@@ -77,7 +77,7 @@ defmodule EctoPGMQ.Notifications do
   ## Examples
 
   ```elixir
-  start_link([name: MyApp.Notifications | Repo.config()])
+  Notifications.start_link([name: MyApp.Notifications | Repo.config()])
   ```
   """
   @spec start_link(keyword()) :: {:ok, pid()} | {:error, Postgrex.Error.t() | term()}
@@ -101,13 +101,13 @@ defmodule EctoPGMQ.Notifications do
   ## Examples
 
   ```elixir
-  subscribe(MyApp.Notifications, "my_queue")
+  Notifications.subscribe(MyApp.Notifications, "my_queue")
   ```
   """
   @spec subscribe(listener(), Queue.name()) :: {:ok | :eventually, subscription(), channel()}
   @spec subscribe(listener(), Queue.name(), keyword()) :: {:ok | :eventually, subscription(), channel()}
   def subscribe(listener, queue, opts \\ []) do
-    channel = queue_channel(queue)
+    channel = "#{PGMQ.schema()}.#{PGMQ.queue_table_name(queue)}.INSERT"
     {status, subscription} = Postgrex.Notifications.listen(listener, channel, opts)
     {status, subscription, channel}
   end
@@ -124,18 +124,10 @@ defmodule EctoPGMQ.Notifications do
   ## Examples
 
   ```elixir
-  unsubscribe(MyApp.Notifications, my_subscription)
+  Notifications.unsubscribe(MyApp.Notifications, my_subscription)
   ```
   """
   @spec unsubscribe(listener(), subscription()) :: :ok | :error
   @spec unsubscribe(listener(), subscription(), keyword()) :: :ok | :error
   defdelegate unsubscribe(listener, subscription, opts \\ []), to: Postgrex.Notifications, as: :unlisten
-
-  ################################
-  # Private API
-  ################################
-
-  defp queue_channel(queue) do
-    "#{PGMQ.schema()}.#{PGMQ.queue_table_name(queue)}.INSERT"
-  end
 end

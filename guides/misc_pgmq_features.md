@@ -2,6 +2,8 @@
 
 TODO(Gordon) - Fill out this doc
 
+## Headers
+
 ## Partitioning
 
 ## Polling

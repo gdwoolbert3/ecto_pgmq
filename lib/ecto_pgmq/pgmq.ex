@@ -160,8 +160,8 @@ defmodule EctoPGMQ.PGMQ do
 
   ## Examples
 
-      iex> message_ids = send_batch(Repo, "my_queue", [%{"foo" => 1}, %{"bar" => 2}])
-      iex> archive(Repo, "my_queue", message_ids)
+      iex> message_ids = PGMQ.send_batch(Repo, "my_queue", [%{"foo" => 1}, %{"bar" => 2}])
+      iex> PGMQ.archive(Repo, "my_queue", message_ids)
       :ok
   """
   @spec archive(Repo.t(), Queue.name(), [Message.id()]) :: :ok
@@ -184,7 +184,7 @@ defmodule EctoPGMQ.PGMQ do
 
   ## Examples
 
-      iex> bind_topic(Repo, "#", "my_queue")
+      iex> PGMQ.bind_topic(Repo, "#", "my_queue")
       :ok
   """
   @spec bind_topic(Repo.t(), Binding.pattern(), Queue.name()) :: :ok
@@ -213,12 +213,12 @@ defmodule EctoPGMQ.PGMQ do
 
   ## Examples
 
-      iex> convert_archive_partitioned(Repo, "my_queue", 10_000, 100_000, 10)
+      iex> PGMQ.convert_archive_partitioned(Repo, "my_queue", 10_000, 100_000, 10)
       :ok
 
       iex> partition = Duration.new!(hour: 1)
       iex> retention = Duration.new!(day: 1)
-      iex> convert_archive_partitioned(Repo, "my_queue", partition, retention, 10)
+      iex> PGMQ.convert_archive_partitioned(Repo, "my_queue", partition, retention, 10)
       :ok
   """
   @spec convert_archive_partitioned(Repo.t(), Queue.name()) :: :ok
@@ -267,7 +267,7 @@ defmodule EctoPGMQ.PGMQ do
 
   ## Examples
 
-      iex> create_fifo_index(Repo, "my_queue")
+      iex> PGMQ.create_fifo_index(Repo, "my_queue")
       :ok
   """
   @spec create_fifo_index(Repo.t(), Queue.name()) :: :ok
@@ -287,7 +287,7 @@ defmodule EctoPGMQ.PGMQ do
 
   ## Examples
 
-      iex> create_non_partitioned(Repo, "my_unpartitioned_queue")
+      iex> PGMQ.create_non_partitioned(Repo, "my_unpartitioned_queue")
       :ok
   """
   @spec create_non_partitioned(Repo.t(), Queue.name()) :: :ok
@@ -310,12 +310,12 @@ defmodule EctoPGMQ.PGMQ do
 
   ## Examples
 
-      iex> create_partitioned(Repo, "my_partitioned_queue", 10_000, 100_000)
+      iex> PGMQ.create_partitioned(Repo, "my_partitioned_queue", 10_000, 100_000)
       :ok
 
       iex> partition = Duration.new!(hour: 1)
       iex> retention = Duration.new!(day: 1)
-      iex> create_partitioned(Repo, "my_partitioned_queue", partition, retention)
+      iex> PGMQ.create_partitioned(Repo, "my_partitioned_queue", partition, retention)
       :ok
   """
   @spec create_partitioned(Repo.t(), Queue.name()) :: :ok
@@ -344,7 +344,7 @@ defmodule EctoPGMQ.PGMQ do
 
   ## Examples
 
-      iex> create_unlogged(Repo, "my_unlogged_queue")
+      iex> PGMQ.create_unlogged(Repo, "my_unlogged_queue")
       :ok
   """
   @spec create_unlogged(Repo.t(), Queue.name()) :: :ok
@@ -364,8 +364,8 @@ defmodule EctoPGMQ.PGMQ do
 
   ## Examples
 
-      iex> message_ids = send_batch(Repo, "my_queue", [%{"foo" => 1}, %{"bar" => 2}])
-      iex> delete(Repo, "my_queue", message_ids)
+      iex> message_ids = PGMQ.send_batch(Repo, "my_queue", [%{"foo" => 1}, %{"bar" => 2}])
+      iex> PGMQ.delete(Repo, "my_queue", message_ids)
       :ok
   """
   @spec delete(Repo.t(), Queue.name(), [Message.id()]) :: :ok
@@ -387,8 +387,8 @@ defmodule EctoPGMQ.PGMQ do
 
   ## Examples
 
-      iex> enable_notify_insert(Repo, "my_queue")
-      iex> disable_notify_insert(Repo, "my_queue")
+      iex> PGMQ.enable_notify_insert(Repo, "my_queue")
+      iex> PGMQ.disable_notify_insert(Repo, "my_queue")
       :ok
   """
   @spec disable_notify_insert(Repo.t(), Queue.name()) :: :ok
@@ -408,7 +408,7 @@ defmodule EctoPGMQ.PGMQ do
 
   ## Examples
 
-      iex> drop_queue(Repo, "my_queue")
+      iex> PGMQ.drop_queue(Repo, "my_queue")
       :ok
   """
   @spec drop_queue(Repo.t(), Queue.name()) :: :ok
@@ -430,7 +430,7 @@ defmodule EctoPGMQ.PGMQ do
 
   ## Examples
 
-      iex> enable_notify_insert(Repo, "my_queue", 1_000)
+      iex> PGMQ.enable_notify_insert(Repo, "my_queue", 1_000)
       :ok
   """
   @spec enable_notify_insert(Repo.t(), Queue.name()) :: :ok
@@ -453,8 +453,8 @@ defmodule EctoPGMQ.PGMQ do
 
   ## Examples
 
-      iex> enable_notify_insert(Repo, "my_queue")
-      iex> [%Throttle{} | _] = list_notify_insert_throttles(Repo)
+      iex> PGMQ.enable_notify_insert(Repo, "my_queue")
+      iex> [%Throttle{} | _] = PGMQ.list_notify_insert_throttles(Repo)
   """
   @spec list_notify_insert_throttles(Repo.t()) :: [Throttle.t()]
   @spec list_notify_insert_throttles(Repo.t(), [query_opt()]) :: [Throttle.t()]
@@ -474,7 +474,7 @@ defmodule EctoPGMQ.PGMQ do
 
   ## Examples
 
-      iex> [%Queue{} | _] = list_queues(Repo)
+      iex> [%Queue{} | _] = PGMQ.list_queues(Repo)
   """
   @spec list_queues(Repo.t()) :: [Queue.t()]
   @spec list_queues(Repo.t(), [query_opt()]) :: [Queue.t()]
@@ -496,8 +496,8 @@ defmodule EctoPGMQ.PGMQ do
 
   ## Examples
 
-      iex> bind_topic(Repo, "#", "my_queue")
-      iex> [%Binding{} | _] = list_topic_bindings(Repo)
+      iex> PGMQ.bind_topic(Repo, "#", "my_queue")
+      iex> [%Binding{} | _] = PGMQ.list_topic_bindings(Repo)
   """
   @spec list_topic_bindings(Repo.t()) :: [Binding.t()]
   @spec list_topic_bindings(Repo.t(), [query_opt()]) :: [Binding.t()]
@@ -513,7 +513,7 @@ defmodule EctoPGMQ.PGMQ do
 
   ## Examples
 
-      iex> [%Metrics{} | _] = metrics_all(Repo)
+      iex> [%Metrics{} | _] = PGMQ.metrics_all(Repo)
   """
   @spec metrics_all(Repo.t()) :: [Metrics.t()]
   @spec metrics_all(Repo.t(), [query_opt()]) :: [Metrics.t()]
@@ -529,8 +529,8 @@ defmodule EctoPGMQ.PGMQ do
 
   ## Examples
 
-      iex> send_batch(Repo, "my_queue", [%{"foo" => 1}])
-      iex> [%Message{reads: 0}] = pop(Repo, "my_queue", 1)
+      iex> PGMQ.send_batch(Repo, "my_queue", [%{"foo" => 1}])
+      iex> [%Message{reads: 0}] = PGMQ.pop(Repo, "my_queue", 1)
   """
   @spec pop(Repo.t(), Queue.name(), quantity()) :: [Message.t()]
   @spec pop(Repo.t(), Queue.name(), quantity(), [query_opt()]) :: [Message.t()]
@@ -549,8 +549,8 @@ defmodule EctoPGMQ.PGMQ do
 
   ## Examples
 
-      iex> send_batch(Repo, "my_queue", [%{"foo" => 1}])
-      iex> purge_queue(Repo, "my_queue")
+      iex> PGMQ.send_batch(Repo, "my_queue", [%{"foo" => 1}])
+      iex> PGMQ.purge_queue(Repo, "my_queue")
       1
   """
   @spec purge_queue(Repo.t(), Queue.name()) :: purged_messages()
@@ -570,8 +570,8 @@ defmodule EctoPGMQ.PGMQ do
 
   ## Examples
 
-      iex> send_batch(Repo, "my_queue", [%{"foo" => 1}])
-      iex> [%Message{reads: 1}] = read(Repo, "my_queue", 5, 1)
+      iex> PGMQ.send_batch(Repo, "my_queue", [%{"foo" => 1}])
+      iex> [%Message{reads: 1}] = PGMQ.read(Repo, "my_queue", 5, 1)
   """
   @spec read(Repo.t(), Queue.name(), visibility_timeout(), quantity()) :: [Message.t()]
   @spec read(Repo.t(), Queue.name(), visibility_timeout(), quantity(), conditional()) :: [Message.t()]
@@ -594,8 +594,8 @@ defmodule EctoPGMQ.PGMQ do
 
   ## Examples
 
-      iex> send_batch(Repo, "my_queue", [%{"foo" => 1}])
-      iex> [%Message{reads: 1}] = read_grouped(Repo, "my_queue", 5, 1)
+      iex> PGMQ.send_batch(Repo, "my_queue", [%{"foo" => 1}])
+      iex> [%Message{reads: 1}] = PGMQ.read_grouped(Repo, "my_queue", 5, 1)
   """
   @spec read_grouped(Repo.t(), Queue.name(), visibility_timeout(), quantity()) :: [Message.t()]
   @spec read_grouped(Repo.t(), Queue.name(), visibility_timeout(), quantity(), [query_opt()]) :: [Message.t()]
@@ -617,8 +617,8 @@ defmodule EctoPGMQ.PGMQ do
 
   ## Examples
 
-      iex> send_batch(Repo, "my_queue", [%{"foo" => 1}])
-      iex> [%Message{reads: 1}] = read_grouped_head(Repo, "my_queue", 5, 1)
+      iex> PGMQ.send_batch(Repo, "my_queue", [%{"foo" => 1}])
+      iex> [%Message{reads: 1}] = PGMQ.read_grouped_head(Repo, "my_queue", 5, 1)
   """
   @spec read_grouped_head(Repo.t(), Queue.name(), visibility_timeout(), quantity()) :: [Message.t()]
   @spec read_grouped_head(Repo.t(), Queue.name(), visibility_timeout(), quantity(), [query_opt()]) :: [Message.t()]
@@ -642,8 +642,8 @@ defmodule EctoPGMQ.PGMQ do
 
   ## Examples
 
-      iex> send_batch(Repo, "my_queue", [%{"foo" => 1}])
-      iex> [%Message{reads: 1}] = read_grouped_head_with_poll(Repo, "my_queue", 5, 1, 5, 500)
+      iex> PGMQ.send_batch(Repo, "my_queue", [%{"foo" => 1}])
+      iex> [%Message{reads: 1}] = PGMQ.read_grouped_head_with_poll(Repo, "my_queue", 5, 1, 5, 500)
   """
   @spec read_grouped_head_with_poll(Repo.t(), Queue.name(), visibility_timeout(), quantity()) :: [Message.t()]
   @spec read_grouped_head_with_poll(
@@ -696,8 +696,8 @@ defmodule EctoPGMQ.PGMQ do
 
   ## Examples
 
-      iex> send_batch(Repo, "my_queue", [%{"foo" => 1}])
-      iex> [%Message{reads: 1}] = read_grouped_rr(Repo, "my_queue", 5, 1)
+      iex> PGMQ.send_batch(Repo, "my_queue", [%{"foo" => 1}])
+      iex> [%Message{reads: 1}] = PGMQ.read_grouped_rr(Repo, "my_queue", 5, 1)
   """
   @spec read_grouped_rr(Repo.t(), Queue.name(), visibility_timeout(), quantity()) :: [Message.t()]
   @spec read_grouped_rr(Repo.t(), Queue.name(), visibility_timeout(), quantity(), [query_opt()]) :: [Message.t()]
@@ -722,8 +722,8 @@ defmodule EctoPGMQ.PGMQ do
 
   ## Examples
 
-      iex> send_batch(Repo, "my_queue", [%{"foo" => 1}])
-      iex> [%Message{reads: 1}] = read_grouped_rr_with_poll(Repo, "my_queue", 5, 1, 5, 500)
+      iex> PGMQ.send_batch(Repo, "my_queue", [%{"foo" => 1}])
+      iex> [%Message{reads: 1}] = PGMQ.read_grouped_rr_with_poll(Repo, "my_queue", 5, 1, 5, 500)
   """
   @spec read_grouped_rr_with_poll(Repo.t(), Queue.name(), visibility_timeout(), quantity()) :: [Message.t()]
   @spec read_grouped_rr_with_poll(
@@ -778,8 +778,8 @@ defmodule EctoPGMQ.PGMQ do
 
   ## Examples
 
-      iex> send_batch(Repo, "my_queue", [%{"foo" => 1}])
-      iex> [%Message{reads: 1}] = read_grouped_with_poll(Repo, "my_queue", 5, 1, 5, 500)
+      iex> PGMQ.send_batch(Repo, "my_queue", [%{"foo" => 1}])
+      iex> [%Message{reads: 1}] = PGMQ.read_grouped_with_poll(Repo, "my_queue", 5, 1, 5, 500)
   """
   @spec read_grouped_with_poll(Repo.t(), Queue.name(), visibility_timeout(), quantity()) :: [Message.t()]
   @spec read_grouped_with_poll(Repo.t(), Queue.name(), visibility_timeout(), quantity(), poll_timeout()) :: [Message.t()]
@@ -824,8 +824,8 @@ defmodule EctoPGMQ.PGMQ do
 
   ## Examples
 
-      iex> send_batch(Repo, "my_queue", [%{"foo" => 1}])
-      iex> [%Message{reads: 1}] = read_with_poll(Repo, "my_queue", 5, 1, 5, 500)
+      iex> PGMQ.send_batch(Repo, "my_queue", [%{"foo" => 1}])
+      iex> [%Message{reads: 1}] = PGMQ.read_with_poll(Repo, "my_queue", 5, 1, 5, 500)
   """
   @spec read_with_poll(Repo.t(), Queue.name(), visibility_timeout(), quantity()) :: [Message.t()]
   @spec read_with_poll(Repo.t(), Queue.name(), visibility_timeout(), quantity(), poll_timeout()) :: [Message.t()]
@@ -879,12 +879,12 @@ defmodule EctoPGMQ.PGMQ do
 
   ## Examples
 
-      iex> [message_id] = send_batch(Repo, "my_queue", [%{"foo" => 1}])
+      iex> [message_id] = PGMQ.send_batch(Repo, "my_queue", [%{"foo" => 1}])
       iex> is_integer(message_id)
       true
 
       iex> delay = DateTime.utc_now()
-      iex> [message_id] = send_batch(Repo, "my_queue", [%{"foo" => 1}], nil, delay)
+      iex> [message_id] = PGMQ.send_batch(Repo, "my_queue", [%{"foo" => 1}], nil, delay)
       iex> is_integer(message_id)
       true
   """
@@ -924,14 +924,14 @@ defmodule EctoPGMQ.PGMQ do
 
   ## Examples
 
-      iex> bind_topic(Repo, "#", "my_queue")
-      iex> %{"my_queue" => [message_id]} = send_batch_topic(Repo, "my.routing.key", [%{"foo" => 1}])
+      iex> PGMQ.bind_topic(Repo, "#", "my_queue")
+      iex> %{"my_queue" => [message_id]} = PGMQ.send_batch_topic(Repo, "my.routing.key", [%{"foo" => 1}])
       iex> is_integer(message_id)
       true
 
       iex> delay = DateTime.utc_now()
-      iex> bind_topic(Repo, "#", "my_queue")
-      iex> %{"my_queue" => [message_id]} = send_batch_topic(Repo, "my.routing.key", [%{"foo" => 1}], nil, delay)
+      iex> PGMQ.bind_topic(Repo, "#", "my_queue")
+      iex> %{"my_queue" => [message_id]} = PGMQ.send_batch_topic(Repo, "my.routing.key", [%{"foo" => 1}], nil, delay)
       iex> is_integer(message_id)
       true
   """
@@ -973,9 +973,9 @@ defmodule EctoPGMQ.PGMQ do
 
   ## Examples
 
-      iex> message_ids = send_batch(Repo, "my_queue", [%{"foo" => 1}])
-      iex> [read_message] = read(Repo, "my_queue", 5, 1)
-      iex> [updated_message] = set_vt(Repo, "my_queue", message_ids, 10)
+      iex> message_ids = PGMQ.send_batch(Repo, "my_queue", [%{"foo" => 1}])
+      iex> [read_message] = PGMQ.read(Repo, "my_queue", 5, 1)
+      iex> [updated_message] = PGMQ.set_vt(Repo, "my_queue", message_ids, 10)
       iex> DateTime.diff(updated_message.visible_at, read_message.visible_at) > 0
       true
   """
@@ -1006,8 +1006,8 @@ defmodule EctoPGMQ.PGMQ do
 
   ## Examples
 
-      iex> bind_topic(Repo, "#", "my_queue")
-      iex> [%Binding{pattern: "#", queue: "my_queue"}] = test_routing(Repo, "my.routing.key")
+      iex> PGMQ.bind_topic(Repo, "#", "my_queue")
+      iex> [%Binding{pattern: "#", queue: "my_queue"}] = PGMQ.test_routing(Repo, "my.routing.key")
   """
   @spec test_routing(Repo.t(), routing_key()) :: [Binding.t()]
   @spec test_routing(Repo.t(), routing_key(), [query_opt()]) :: [Binding.t()]
@@ -1028,8 +1028,8 @@ defmodule EctoPGMQ.PGMQ do
 
   ## Examples
 
-      iex> bind_topic(Repo, "#", "my_queue")
-      iex> unbind_topic(Repo, "#", "my_queue")
+      iex> PGMQ.bind_topic(Repo, "#", "my_queue")
+      iex> PGMQ.unbind_topic(Repo, "#", "my_queue")
       :ok
   """
   @spec unbind_topic(Repo.t(), Binding.pattern(), Queue.name()) :: :ok
@@ -1051,8 +1051,8 @@ defmodule EctoPGMQ.PGMQ do
 
   ## Examples
 
-      iex> enable_notify_insert(Repo, "my_queue")
-      iex> update_notify_insert(Repo, "my_queue", 500)
+      iex> PGMQ.enable_notify_insert(Repo, "my_queue")
+      iex> PGMQ.update_notify_insert(Repo, "my_queue", 500)
       :ok
   """
   @spec update_notify_insert(Repo.t(), Queue.name(), throttle_interval()) :: :ok
@@ -1080,7 +1080,7 @@ defmodule EctoPGMQ.PGMQ do
 
   ## Examples
 
-      iex> validate_routing_key(Repo, "my.routing.key")
+      iex> PGMQ.validate_routing_key(Repo, "my.routing.key")
       :ok
   """
   @spec validate_routing_key(Repo.t(), routing_key()) :: :ok
@@ -1107,7 +1107,7 @@ defmodule EctoPGMQ.PGMQ do
 
   ## Examples
 
-      iex> validate_topic_pattern(Repo, "#")
+      iex> PGMQ.validate_topic_pattern(Repo, "#")
       :ok
   """
   @spec validate_topic_pattern(Repo.t(), Binding.pattern()) :: :ok

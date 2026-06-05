@@ -21,14 +21,16 @@ defmodule EctoPGMQ.PGMQPollTest do
           PGMQ.read_grouped_head_with_poll(Repo, ctx.queue.name, 300, 2, 30)
         end)
 
-      message_specs = [Message.build(%{"id" => 1}, "foo"), Message.build(%{"id" => 2}, "bar")]
-      message_ids = EctoPGMQ.send_messages(Repo, ctx.queue.name, message_specs)
+      messages = [Message.build(%{"id" => 1}, "foo"), Message.build(%{"id" => 2}, "bar")]
+      response = EctoPGMQ.send_messages(Repo, ctx.queue.name, messages)
+
+      assert {:ok, message_ids} = Map.fetch(response, ctx.queue.name)
 
       # Wait up to 5 seconds for a response
       response = Task.await(task)
 
       # Validate that the response contains the expected records
-      assert same_messages?(response, message_ids, message_specs)
+      assert same_messages?(response, message_ids, messages)
     end
   end
 
@@ -40,14 +42,16 @@ defmodule EctoPGMQ.PGMQPollTest do
           PGMQ.read_grouped_rr_with_poll(Repo, ctx.queue.name, 300, 2, 30)
         end)
 
-      message_specs = [Message.build(%{"id" => 1}), Message.build(%{"id" => 2})]
-      message_ids = EctoPGMQ.send_messages(Repo, ctx.queue.name, message_specs)
+      messages = [Message.build(%{"id" => 1}), Message.build(%{"id" => 2})]
+      response = EctoPGMQ.send_messages(Repo, ctx.queue.name, messages)
+
+      assert {:ok, message_ids} = Map.fetch(response, ctx.queue.name)
 
       # Wait up to 5 seconds for a response
       response = Task.await(task)
 
       # Validate that the response contains the expected records
-      assert same_messages?(response, message_ids, message_specs)
+      assert same_messages?(response, message_ids, messages)
     end
   end
 
@@ -59,14 +63,16 @@ defmodule EctoPGMQ.PGMQPollTest do
           PGMQ.read_grouped_with_poll(Repo, ctx.queue.name, 300, 3, 30)
         end)
 
-      message_specs = [Message.build(%{"id" => 1}), Message.build(%{"id" => 2})]
-      message_ids = EctoPGMQ.send_messages(Repo, ctx.queue.name, message_specs)
+      messages = [Message.build(%{"id" => 1}), Message.build(%{"id" => 2})]
+      response = EctoPGMQ.send_messages(Repo, ctx.queue.name, messages)
+
+      assert {:ok, message_ids} = Map.fetch(response, ctx.queue.name)
 
       # Wait up to 5 seconds for a response
       response = Task.await(task)
 
       # Validate that the response contains the expected records
-      assert same_messages?(response, message_ids, message_specs)
+      assert same_messages?(response, message_ids, messages)
     end
   end
 
@@ -78,14 +84,16 @@ defmodule EctoPGMQ.PGMQPollTest do
           PGMQ.read_with_poll(Repo, ctx.queue.name, 300, 3, 30)
         end)
 
-      message_specs = [Message.build(%{"id" => 1}), Message.build(%{"id" => 2})]
-      message_ids = EctoPGMQ.send_messages(Repo, ctx.queue.name, message_specs)
+      messages = [Message.build(%{"id" => 1}), Message.build(%{"id" => 2})]
+      response = EctoPGMQ.send_messages(Repo, ctx.queue.name, messages)
+
+      assert {:ok, message_ids} = Map.fetch(response, ctx.queue.name)
 
       # Wait up to 5 seconds for a response
       response = Task.await(task)
 
       # Validate that the response contains the expected records
-      assert same_messages?(response, message_ids, message_specs)
+      assert same_messages?(response, message_ids, messages)
     end
   end
 end

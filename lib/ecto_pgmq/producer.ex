@@ -144,8 +144,8 @@ if Code.ensure_loaded?(Broadway) do
 
       * `:dynamic_repo` - An optional `t:atom/0` name or `t:pid/0` of a dynamic
         repo to use for all DB operations. For more information about dynamic
-        repos, see
-        [Dynamic repositories](https://hexdocs.pm/ecto/replicas-and-dynamic-repositories.html#dynamic-repositories).
+        repositories, see the
+        [`Ecto` docs](https://hexdocs.pm/ecto/replicas-and-dynamic-repositories.html#dynamic-repositories).
 
       * `:listener` - An optional listener specification that can take any of
         the following forms:
