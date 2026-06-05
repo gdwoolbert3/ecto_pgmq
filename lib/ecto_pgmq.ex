@@ -78,89 +78,6 @@ defmodule EctoPGMQ do
   > Alternatively, PGMQ has experimental support for payload filtering. For more
   > information, see `t:EctoPGMQ.PGMQ.conditional/0`.
 
-  ## FIFO Message Groups
-
-  While PGMQ queues are FIFO data structures, the order of message processing
-  can be non-deterministic when there are multiple consumers. This is usually
-  fine but there is sometimes a need to consume messages strictly in order
-  within a group. In order to support this, PGMQ exposes a number of functions
-  that read messages while guaranteeing FIFO ordering for messages with the same
-  `#{EctoPGMQ.PGMQ.group_header()}` header.
-
-  There are three slightly different methodologies for reading messages while
-  respecting FIFO message groups: head reading, round-robin reading and
-  throughput-optimized reading.
-
-  ### Head Reading
-
-  This method will read only the oldest visible message for each group. This
-  allows a single consumer to process messages in parallel without race
-  conditions.
-
-  TODO(Gordon) - add example docs
-
-  ### Round-Robin Reading
-
-  TODO(Gordon) - add documentation for read_grouped_head style
-
-  This method will fairly interleave messages from all available groups.
-
-      iex> message_specs =
-      ...>   [
-      ...>     Message.build(%{}, "A"),
-      ...>     Message.build(%{}, "A"),
-      ...>     Message.build(%{}, "B"),
-      ...>     Message.build(%{}, "B"),
-      ...>     Message.build(%{}, "C")
-      ...>   ]
-      ...>
-      iex> [id_1, id_2, id_3, id_4, id_5] = send_messages(Repo, "my_queue", message_specs)
-      iex> messages = read_messages(Repo, "my_queue", 300, 5, message_grouping: :round_robin)
-      iex> Enum.map(messages, & &1.id) == [id_1, id_3, id_5, id_2, id_4]
-      true
-
-  ### Throughput-Optimized Reading
-
-  This method will prioritize messages from the same group. As the name implies,
-  this method will often be more efficient than round-robin reading.
-
-      iex> message_specs =
-      ...>   [
-      ...>     Message.build(%{}, "A"),
-      ...>     Message.build(%{}, "A"),
-      ...>     Message.build(%{}, "B"),
-      ...>     Message.build(%{}, "B"),
-      ...>     Message.build(%{}, "C")
-      ...>   ]
-      ...>
-      iex> message_ids = send_messages(Repo, "my_queue", message_specs)
-      iex> messages = read_messages(Repo, "my_queue", 300, 5, message_grouping: :throughput_optimized)
-      iex> Enum.map(messages, & &1.id) == message_ids
-      true
-
-  > #### Long-Lived Message Groups {: .warning}
-  >
-  > If message groups are long-lived and high-volume, this method of reading can
-  > effectively starve later groups. For more information, see
-  > [Performance Considerations](#performance-considerations).
-
-  ### Performance Considerations
-
-  In general, FIFO message groups are more performant when the following
-  conditions are met:
-
-    * There are many low-volume groups.
-
-    * Messages are removed from the queue relatively quickly.
-
-    * The queue is optimized for FIFO message group reads (see
-      `EctoPGMQ.create_queue/4` and `EctoPGMQ.update_queue/4`).
-
-  ### Further Information
-
-  For more information about FIFO message groups, see the
-  [PGMQ docs](https://github.com/pgmq/pgmq/blob/main/docs/fifo-queues.md).
-
   TODO(Gordon) - blurb about topics and routing
   TODO(Gordon) - define all types in PGMQ module first?
   TODO(Gordon) - allow timestamp vt in message update spec (and producer ack action spec)
@@ -347,8 +264,6 @@ defmodule EctoPGMQ do
   @typedoc """
   Options for reading messages.
 
-  TODO(Gordon) - Add docs for custom payload type
-
   In addition to the standard [query options](`m:EctoPGMQ.PGMQ#query-options`),
   messages can be read with the following options:
 
@@ -363,6 +278,9 @@ defmodule EctoPGMQ do
       information about FIFO message groups, see
       [FIFO Message Groups](#fifo-message-groups).
 
+    * `:payload_type` - An optional `t:EctoPGMQ.Message.payload_type/0` for the
+      message payloads. Defaults to `:map`.
+
     * `:polling` - An optional `t:poll_config/0` for the read operation or nil
       to disable polling. This option is ignored when deleting on read. Defaults
       to `nil`. For more information about polling, see [Polling](#polling).
@@ -370,6 +288,7 @@ defmodule EctoPGMQ do
   @type read_messages_opts :: [
           {:delete?, boolean()}
           | {:polling, poll_config() | nil}
+          | {:payload_type, Message.payload_type()}
           | {:message_grouping, :head | :round_robin | :throughput_optimized | nil}
           | PGMQ.query_opt()
         ]
@@ -402,7 +321,7 @@ defmodule EctoPGMQ do
 
   ## Examples
 
-      iex> [%Queue{} | _] = all_queues(Repo)
+      iex> [%Queue{} | _] = EctoPGMQ.all_queues(Repo)
   """
   @doc group: "Queue API"
   @spec all_queues(Repo.t()) :: [Queue.t()]
@@ -422,17 +341,17 @@ defmodule EctoPGMQ do
 
   ## Examples
 
-      iex> queue = create_queue(Repo, "my_unpartitioned_queue", %{notifications: 1_000})
+      iex> queue = EctoPGMQ.create_queue(Repo, "my_unpartitioned_queue", %{notifications: 1_000})
       iex> %Queue{notifications: %Throttle{}} = queue
 
-      iex> queue = create_queue(Repo, "my_partitioned_queue", %{partitions: {10_000, 100_000}})
+      iex> queue = EctoPGMQ.create_queue(Repo, "my_partitioned_queue", %{partitions: {10_000, 100_000}})
       iex> %Queue{partitioned?: true} = queue
 
       iex> partitions = {Duration.new!(hour: 1), Duration.new!(day: 1)}
-      iex> queue = create_queue(Repo, "my_partitioned_queue", %{partitions: partitions})
+      iex> queue = EctoPGMQ.create_queue(Repo, "my_partitioned_queue", %{partitions: partitions})
       iex> %Queue{partitioned?: true} = queue
 
-      iex> queue = create_queue(Repo, "my_unlogged_queue", %{unlogged?: true})
+      iex> queue = EctoPGMQ.create_queue(Repo, "my_unlogged_queue", %{unlogged?: true})
       iex> %Queue{unlogged?: true} = queue
   """
   @doc group: "Queue API"
@@ -496,7 +415,7 @@ defmodule EctoPGMQ do
 
   ## Examples
 
-      iex> drop_queue(Repo, "my_queue")
+      iex> EctoPGMQ.drop_queue(Repo, "my_queue")
       :ok
   """
   @doc group: "Queue API"
@@ -514,9 +433,9 @@ defmodule EctoPGMQ do
 
   ## Examples
 
-      iex> %Queue{} = get_queue(Repo, "my_queue")
+      iex> %Queue{} = EctoPGMQ.get_queue(Repo, "my_queue")
 
-      iex> get_queue(Repo, "my_non_existent_queue")
+      iex> EctoPGMQ.get_queue(Repo, "my_non_existent_queue")
       nil
   """
   @doc group: "Queue API"
@@ -534,8 +453,8 @@ defmodule EctoPGMQ do
 
   ## Examples
 
-      iex> send_messages(Repo, "my_queue", [%{"foo" => 1}])
-      iex> purge_queue(Repo, "my_queue")
+      iex> EctoPGMQ.send_messages(Repo, "my_queue", [%{"foo" => 1}])
+      iex> EctoPGMQ.purge_queue(Repo, "my_queue")
       1
   """
   @doc group: "Queue API"
@@ -564,7 +483,7 @@ defmodule EctoPGMQ do
   ## Examples
 
       iex> throttle = Duration.new!(second: 5)
-      iex> queue = update_queue(Repo, "my_queue", %{notifications: throttle})
+      iex> queue = EctoPGMQ.update_queue(Repo, "my_queue", %{notifications: throttle})
       iex> %Queue{notifications: %Throttle{}} = queue
   """
   @doc group: "Queue API"
@@ -637,8 +556,8 @@ defmodule EctoPGMQ do
 
   ## Examples
 
-      iex> message_ids = send_messages(Repo, "my_queue", [%{"foo" => 1}])
-      iex> archive_messages(Repo, "my_queue", message_ids)
+      iex> %{"my_queue" => ids} = EctoPGMQ.send_messages(Repo, "my_queue", [%{"foo" => 1}])
+      iex> EctoPGMQ.archive_messages(Repo, "my_queue", ids)
       :ok
   """
   @doc group: "Message API"
@@ -656,8 +575,8 @@ defmodule EctoPGMQ do
 
   ## Examples
 
-      iex> message_ids = send_messages(Repo, "my_queue", [%{"foo" => 1}])
-      iex> delete_messages(Repo, "my_queue", message_ids)
+      iex> %{"my_queue" => ids} = EctoPGMQ.send_messages(Repo, "my_queue", [%{"foo" => 1}])
+      iex> EctoPGMQ.delete_messages(Repo, "my_queue", ids)
       :ok
   """
   @doc group: "Message API"
@@ -668,6 +587,8 @@ defmodule EctoPGMQ do
   @doc """
   Reads messages from the given queue.
 
+  TODO(Gordon) - more doctests
+
   ## Options
 
   See `t:read_messages_opts/0` for information about the options supported by
@@ -675,8 +596,8 @@ defmodule EctoPGMQ do
 
   ## Examples
 
-      iex> send_messages(Repo, "my_queue", [%{"foo" => 1}])
-      iex> [%Message{reads: 1}] = read_messages(Repo, "my_queue", 5, 2)
+      iex> EctoPGMQ.send_messages(Repo, "my_queue", [%{"foo" => 1}])
+      iex> [%Message{reads: 1}] = EctoPGMQ.read_messages(Repo, "my_queue", 5, 2)
   """
   @doc group: "Message API"
   @spec read_messages(Repo.t(), Queue.name(), visibility_timeout(), PGMQ.quantity()) :: [Message.t()]
@@ -741,6 +662,7 @@ defmodule EctoPGMQ do
   TODO(Gordon) - document and add payload type options
   TODO(Gordon) - update all locations where Message.build/3 is being used with only a payload
   TODO(Gordon) - support queue OR routing key destinations
+  TODO(Gordon) - more doctests?
 
   ## Options
 
@@ -752,8 +674,8 @@ defmodule EctoPGMQ do
   ## Examples
 
       iex> delay = Duration.new!(hour: 1)
-      iex> [message_id] = send_messages(Repo, "my_queue", [%{"foo" => 1}], delay: delay)
-      iex> is_integer(message_id)
+      iex> %{"my_queue" => [id]} = EctoPGMQ.send_messages(Repo, "my_queue", [%{"foo" => 1}], delay: delay)
+      iex> is_integer(id)
       true
   """
   @doc group: "Message API"
@@ -803,8 +725,8 @@ defmodule EctoPGMQ do
   ## Examples
 
       iex> visibility_timeout = Duration.new!(minute: 5)
-      iex> message_ids = send_messages(Repo, "my_queue", [%{"foo" => 1}])
-      iex> update_messages(Repo, "my_queue", message_ids, %{visibility_timeout: visibility_timeout})
+      iex> %{"my_queue" => ids} = EctoPGMQ.send_messages(Repo, "my_queue", [%{"foo" => 1}])
+      iex> EctoPGMQ.update_messages(Repo, "my_queue", ids, %{visibility_timeout: visibility_timeout})
       :ok
   """
   @doc group: "Message API"
