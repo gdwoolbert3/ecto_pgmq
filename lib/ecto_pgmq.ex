@@ -3,12 +3,7 @@ defmodule EctoPGMQ do
   An opinionated PGMQ client for Elixir that builds on top of `Ecto` and the
   `Ecto.Adapters.Postgres` adapter.
 
-  > #### Read-Only Schemas {: .warning}
-  >
-  > All schemas in this library should be treated as read-only.
-
   TODO(Gordon) - support optionally pulling extension files from PGMQ GH?
-  TODO(Gordon) - Update all documentation links accordingly when finished
   """
 
   alias Ecto.Repo
@@ -82,7 +77,8 @@ defmodule EctoPGMQ do
 
     * A `t:pos_integer/0` denoting a message-based interval.
 
-  For more information about partitioning, see [Partitioning](#partitioning).
+  For more information about partitioning, see
+  [Partitioning](`m:EctoPGMQ.PGMQ#partitioning`).
 
   For more information about this type, see
   `t:EctoPGMQ.PGMQ.partition_interval/0` and
@@ -103,7 +99,8 @@ defmodule EctoPGMQ do
     * A `t:pos_integer/0` denoting a length of time. The unit for the poll
       interval is milliseconds and the unit for the timeout is seconds.
 
-  For more information about polling, see [Polling](#polling).
+  For more information about polling, see
+  [Polling](`m:EctoPGMQ.PGMQ#polling`).
 
   For more information about this type, see `t:EctoPGMQ.PGMQ.poll_interval/0`
   and `t:EctoPGMQ.PGMQ.poll_timeout/0`.
@@ -117,12 +114,12 @@ defmodule EctoPGMQ do
 
     * `:bindings` - An optional `t:list/0` of `t:EctoPGMQ.Binding.pattern/0`
       for the queue. Defaults to `[]`. For more information about bindings, see
-      [Message Routing](`m:EctoPGMQ.Binding#message-routing`).
+      [Message Routing](message_routing.md).
 
     * `:message_groups?` - An optional `t:boolean/0` denoting whether or not the
       queue should be optimized for FIFO message group reads. Defaults to
       `false`. For more information about FIFO message groups, see
-      [FIFO Message Groups](#fifo-message-groups).
+      [FIFO Message Groups](fifo_message_groups.md).
 
     * `:notifications` - An optional `t:notification_throttle/0` for the queue
       or `nil` to leave notifications disabled. Defaults to `nil`. For more
@@ -151,7 +148,7 @@ defmodule EctoPGMQ do
 
     * `:bindings` - An optional `t:list/0` of `t:EctoPGMQ.Binding.pattern/0`
       for the queue. For more information about bindings, see
-      [Message Routing](`m:EctoPGMQ.Binding#message-routing`).
+      [Message Routing](message_routing.md).
 
        > #### Replace Behavior {: .warning}
        >
@@ -162,7 +159,7 @@ defmodule EctoPGMQ do
     * `:message_groups?` - `true` to optimize the queue for FIFO message group
       reads. Note that `true` is the only valid value because this operation
       cannot be undone. For more information about FIFO message groups, see
-      [FIFO Message Groups](#fifo-message-groups).
+      [FIFO Message Groups](fifo_message_groups.md).
 
     * `:notifications` - An optional `t:notification_throttle/0` for the queue or
       `nil` to disable notifications. For more information about notifications,
@@ -189,7 +186,7 @@ defmodule EctoPGMQ do
       `:throughput_optimized`, or `nil` to ignore message groups when reading.
       This option is ignored when deleting on read. Defaults to `nil`. For more
       information about FIFO message groups, see
-      [FIFO Message Groups](#fifo-message-groups).
+      [FIFO Message Groups](fifo_message_groups.md).
 
     * `:payload_type` - An optional `t:EctoPGMQ.Message.payload_type/0` for the
       message payloads. Defaults to `:map`.
@@ -404,6 +401,7 @@ defmodule EctoPGMQ do
   @spec update_queue(Repo.t(), Queue.name(), queue_update_attributes()) :: Queue.t()
   @spec update_queue(Repo.t(), Queue.name(), queue_update_attributes(), [PGMQ.query_opt()]) :: Queue.t()
   def update_queue(repo, queue, attributes, opts \\ []) do
+    # credo:disable-for-lines:50 Credo.Check.Refactor.Nesting
     transaction(
       repo,
       fn ->
@@ -524,6 +522,7 @@ defmodule EctoPGMQ do
           PGMQ.quantity(),
           read_messages_opts()
         ) :: [Message.t()]
+  # credo:disable-for-lines:40 Credo.Check.Refactor.CyclomaticComplexity
   def read_messages(repo, queue, visibility_timeout, quantity, opts \\ []) do
     {delete?, opts} = Keyword.pop(opts, :delete?, false)
     {poll_config, opts} = Keyword.pop(opts, :polling)

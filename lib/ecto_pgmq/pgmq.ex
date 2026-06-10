@@ -7,6 +7,24 @@ defmodule EctoPGMQ.PGMQ do
   parameterization supported by PGMQ, this module relies on client-side defaults
   to implement a single function for each distinct piece of PGMQ functionality.
 
+  ## Partitioning
+
+  PGMQ supports partitioning both queues and archives.
+
+  The [pg_partman extension](https://github.com/pgpartman/pg_partman) must be
+  available in order to use partitioning.
+
+  For more information about partitioning, see the
+  [PGMQ docs](https://github.com/pgmq/pgmq/tree/main?tab=readme-ov-file#partitioned-queues).
+
+  ## Polling
+
+  PGMQ supports Postgres server-side polling during read operations. Reading
+  with a poll can be used to reduce network round trips if there is a good
+  chance that demand can be satisfied in a short time **BUT** doing so utilizes
+  a connection for the duration of the read operation. As such, polling should
+  be avoided in situations where the DB connection pool is a bottleneck.
+
   ## Query Options
 
   All of the functions in this module support a common set of query options.
@@ -92,8 +110,8 @@ defmodule EctoPGMQ.PGMQ do
 
   The following query configuration options are supported:
 
-    * `:log` - A `t:boolean/0` denoting whether or to log the query. Defaults to
-    `true`.
+    * `:log` - A `t:boolean/0` denoting whether or not to log the query.
+      Defaults to `true`.
 
     * `:timeout` - A `t:timeout/0` for the query (in milliseconds). Defaults to
     `15_000`.
@@ -131,7 +149,7 @@ defmodule EctoPGMQ.PGMQ do
   Routing keys can be validated with `validate_routing_key/3`.
 
   For more information about message routing, see
-  [Message Routing](`m:EctoPGMQ.Binding#message-routing`).
+  [Message Routing](message_routing.md).
   """
   @type routing_key :: String.t()
 
@@ -177,7 +195,7 @@ defmodule EctoPGMQ.PGMQ do
   Binds the given queue to the given pattern.
 
   For more information about message routing, see
-  [Message Routing](`m:EctoPGMQ.Binding#message-routing`).
+  [Message Routing](message_routing.md).
 
   For more information about this function, see the
   [PGMQ docs](https://github.com/pgmq/pgmq/blob/main/docs/topics.md#pgmqbind_topicpattern-queue_name).
@@ -205,8 +223,7 @@ defmodule EctoPGMQ.PGMQ do
   > its contents untouched. Additional cleanup (table deletion, message
   > movement, etc.) is left to the user.
 
-  For more information about partitioning, see
-  [Partitioning](`m:EctoPGMQ#partitioning`).
+  For more information about partitioning, see [Partitioning](#partitioning).
 
   For more information about this function, see the
   [PGMQ docs](https://github.com/pgmq/pgmq/blob/main/docs/api/sql/functions.md#convert_archive_partitioned).
@@ -260,7 +277,7 @@ defmodule EctoPGMQ.PGMQ do
   queue.
 
   For more information about FIFO message groups, see
-  [FIFO Message Groups](`m:EctoPGMQ#fifo-message-groups`).
+  [FIFO Message Groups](fifo_message_groups.md).
 
   For more information about this function, see the
   [PGMQ docs](https://github.com/pgmq/pgmq/blob/main/docs/api/sql/functions.md#create_fifo_index).
@@ -302,8 +319,7 @@ defmodule EctoPGMQ.PGMQ do
   @doc """
   Creates a partitioned queue with the given name.
 
-  For more information about partitioning, see
-  [Partitioning](`m:EctoPGMQ#partitioning`).
+  For more information about partitioning, see [Partitioning](#partitioning).
 
   For more information about this function, see the
   [PGMQ docs](https://github.com/pgmq/pgmq/blob/main/docs/api/sql/functions.md#create_partitioned).
@@ -489,7 +505,7 @@ defmodule EctoPGMQ.PGMQ do
   Lists all topic bindings.
 
   For more information about message routing, see
-  [Message Routing](`m:EctoPGMQ.Binding#message-routing`).
+  [Message Routing](message_routing.md).
 
   For more information about this function, see the
   [PGMQ docs](https://github.com/pgmq/pgmq/blob/main/docs/topics.md#pgmqlist_topic_bindings).
@@ -587,7 +603,7 @@ defmodule EctoPGMQ.PGMQ do
   optimizing throughput.
 
   For more information about FIFO message groups, see
-  [FIFO Message Groups](`m:EctoPGMQ#fifo-message-groups`).
+  [FIFO Message Groups](fifo_message_groups.md).
 
   For more information about this function, see the
   [PGMQ docs](https://github.com/pgmq/pgmq/blob/main/docs/api/sql/functions.md#read_grouped).
@@ -610,7 +626,7 @@ defmodule EctoPGMQ.PGMQ do
   returning a single message per group.
 
   For more information about FIFO message groups, see
-  [FIFO Message Groups](`m:EctoPGMQ#fifo-message-groups`).
+  [FIFO Message Groups](fifo_message_groups.md).
 
   For more information about this function, see the
   [PGMQ docs](https://github.com/pgmq/pgmq/blob/main/docs/api/sql/functions.md#read_grouped_head).
@@ -633,9 +649,9 @@ defmodule EctoPGMQ.PGMQ do
   respecting FIFO message groups and returning a single message per group.
 
   For more information about FIFO message groups, see
-  [FIFO Message Groups](`m:EctoPGMQ#fifo-message-groups`).
+  [FIFO Message Groups](fifo_message_groups.md).
 
-  For more information about polling, see [Polling](`m:EctoPGMQ#polling`).
+  For more information about polling, see [Polling](#polling).
 
   For more information about this function, see the
   [PGMQ docs](https://github.com/pgmq/pgmq/blob/main/docs/api/sql/functions.md#read_grouped_head_with_poll).
@@ -689,7 +705,7 @@ defmodule EctoPGMQ.PGMQ do
   round-robin interleaving FIFO message groups.
 
   For more information about FIFO message groups, see
-  [FIFO Message Groups](`m:EctoPGMQ#fifo-message-groups`).
+  [FIFO Message Groups](fifo_message_groups.md).
 
   For more information about this function, see the
   [PGMQ docs](https://github.com/pgmq/pgmq/blob/main/docs/api/sql/functions.md#read_grouped_rr).
@@ -713,9 +729,9 @@ defmodule EctoPGMQ.PGMQ do
   groups.
 
   For more information about FIFO message groups, see
-  [FIFO Message Groups](`m:EctoPGMQ#fifo-message-groups`).
+  [FIFO Message Groups](fifo_message_groups.md).
 
-  For more information about polling, see [Polling](`m:EctoPGMQ#polling`).
+  For more information about polling, see [Polling](#polling).
 
   For more information about this function, see the
   [PGMQ docs](https://github.com/pgmq/pgmq/blob/main/docs/api/sql/functions.md#read_grouped_rr_with_poll).
@@ -769,9 +785,9 @@ defmodule EctoPGMQ.PGMQ do
   respecting FIFO message groups and optimizing throughput.
 
   For more information about FIFO message groups, see
-  [FIFO Message Groups](`m:EctoPGMQ#fifo-message-groups`).
+  [FIFO Message Groups](fifo_message_groups.md).
 
-  For more information about polling, see [Polling](`m:EctoPGMQ#polling`).
+  For more information about polling, see [Polling](#polling).
 
   For more information about this function, see the
   [PGMQ docs](https://github.com/pgmq/pgmq/blob/main/docs/api/sql/functions.md#read_grouped_with_poll).
@@ -817,7 +833,7 @@ defmodule EctoPGMQ.PGMQ do
   @doc """
   Reads messages from the given queue with a Postgres server-side poll.
 
-  For more information about polling, see [Polling](`m:EctoPGMQ#polling`).
+  For more information about polling, see [Polling](#polling).
 
   For more information about this function, see the
   [PGMQ docs](https://github.com/pgmq/pgmq/blob/main/docs/api/sql/functions.md#read_with_poll).
@@ -917,7 +933,7 @@ defmodule EctoPGMQ.PGMQ do
   Sends the given messages with the given routing key.
 
   For more information about message routing, see
-  [Message Routing](`m:EctoPGMQ.Binding#message-routing`).
+  [Message Routing](message_routing.md).
 
   For more information about this function, see the
   [PGMQ docs](https://github.com/pgmq/pgmq/blob/main/docs/topics.md#pgmqsend_batch_topicrouting_key-msgs-headers-delay).
@@ -1007,7 +1023,7 @@ defmodule EctoPGMQ.PGMQ do
   populated.
 
   For more information about message routing, see
-  [Message Routing](`m:EctoPGMQ.Binding#message-routing`).
+  [Message Routing](message_routing.md).
 
   For more information about this function, see the
   [PGMQ docs](https://github.com/pgmq/pgmq/blob/main/docs/topics.md#pgmqtest_routingrouting_key).
@@ -1029,7 +1045,7 @@ defmodule EctoPGMQ.PGMQ do
   Unbinds the given queue from the given pattern.
 
   For more information about message routing, see
-  [Message Routing](`m:EctoPGMQ.Binding#message-routing`).
+  [Message Routing](message_routing.md).
 
   For more information about this function, see the
   [PGMQ docs](https://github.com/pgmq/pgmq/blob/main/docs/topics.md#pgmqunbind_topicpattern-queue_name).
@@ -1081,7 +1097,7 @@ defmodule EctoPGMQ.PGMQ do
   > given.
 
   For more information about message routing, see
-  [Message Routing](`m:EctoPGMQ.Binding#message-routing`).
+  [Message Routing](message_routing.md).
 
   For more information about this function, see the
   [PGMQ docs](https://github.com/pgmq/pgmq/blob/main/docs/topics.md#pgmqvalidate_routing_keyrouting_key).
@@ -1108,7 +1124,7 @@ defmodule EctoPGMQ.PGMQ do
   > This function will raise a `Postgrex.Error` if an invalid pattern is given.
 
   For more information about message routing, see
-  [Message Routing](`m:EctoPGMQ.Binding#message-routing`).
+  [Message Routing](message_routing.md).
 
   For more information about this function, see the
   [PGMQ docs](https://github.com/pgmq/pgmq/blob/main/docs/topics.md#pgmqvalidate_topic_patternpattern).

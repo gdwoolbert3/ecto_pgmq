@@ -82,7 +82,7 @@ defmodule EctoPGMQ.Migrations do
   @doc """
   Creates the PGMQ extension in an `Ecto.Migration`.
 
-  For more information, see [PGMQ Installation](#pgmq-installation).
+  For more information, see [PGMQ Installation](pgmq_installation.md).
 
   ## Examples
 
@@ -102,7 +102,7 @@ defmodule EctoPGMQ.Migrations do
   @doc """
   Drops the PGMQ extension in an `Ecto.Migration`.
 
-  For more information, see [PGMQ Installation](#pgmq-installation).
+  For more information, see [PGMQ Installation](pgmq_installation.md).
 
   ## Examples
 
@@ -119,7 +119,7 @@ defmodule EctoPGMQ.Migrations do
   @doc """
   Updates the PGMQ extension to the default version in an `Ecto.Migration`.
 
-  For more information, see [PGMQ Installation](#pgmq-installation).
+  For more information, see [PGMQ Installation](pgmq_installation.md).
 
   ## Examples
 
@@ -136,7 +136,7 @@ defmodule EctoPGMQ.Migrations do
   @doc """
   Updates the PGMQ extension in an `Ecto.Migration`.
 
-  For more information, see [PGMQ Installation](#pgmq-installation).
+  For more information, see [PGMQ Installation](pgmq_installation.md).
 
   ## Examples
 
@@ -170,7 +170,7 @@ defmodule EctoPGMQ.Migrations do
   > [`mix ecto.load`](https://hexdocs.pm/ecto_sql/Mix.Tasks.Ecto.Load.html) and,
   > therefore, requires that the `psql` shell utility is available.
 
-  For more information, see [PGMQ Installation](#pgmq-installation).
+  For more information, see [PGMQ Installation](pgmq_installation.md).
 
   ## Examples
 
@@ -204,7 +204,7 @@ defmodule EctoPGMQ.Migrations do
   >
   > This function should **NOT** be used if PGMQ is installed as an extension.
 
-  For more information, see [PGMQ Installation](#pgmq-installation).
+  For more information, see [PGMQ Installation](pgmq_installation.md).
 
   ## Examples
 

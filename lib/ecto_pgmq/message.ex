@@ -20,7 +20,7 @@ defmodule EctoPGMQ.Message do
   A PGMQ message group.
 
   For more information about FIFO message groups, see
-  [FIFO Message Groups](`m:EctoPGMQ#fifo-message-groups`).
+  [FIFO Message Groups](fifo_message_groups.md).
   """
   @type group :: String.t()
 
@@ -34,7 +34,7 @@ defmodule EctoPGMQ.Message do
   A PGMQ message payload.
 
   For more information about valid PGMQ message payloads, see
-  [Custom Payload Types](m:EctoPGMQ#custom-payload-types).
+  [Custom Payload Types](custom_payload_types.md).
   """
   @type payload :: PGMQ.payload() | term()
 
@@ -53,11 +53,10 @@ defmodule EctoPGMQ.Message do
       and `opts` is a `t:keyword/0` that contains the init parameters.
 
   For more information about custom PGMQ payloads, see
-  [Custom Payload Types](m:EctoPGMQ#custom-payload-types).
+  [Custom Payload Types](custom_payload_types.md) guide.
   """
   @type payload_type :: module() | {module(), keyword()} | :map
 
-  # TODO(Gordon) - reconsider using a public type here to avoid opaque warnings?
   @typedoc "A PGMQ message specification."
   @opaque message :: record(:message, payload: payload() | nil, headers: headers() | nil)
 

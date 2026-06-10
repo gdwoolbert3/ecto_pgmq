@@ -32,7 +32,7 @@ messages = [
 ]
 
 [id_1, _, id_2, _, id_3] = EctoPGMQ.send_messages(MyApp.Repo, "my_queue", messages)
-messages = EctoPGMQ.read_messages(Myapp.Repo, "my_queue", 300, 4, message_grouping: :head)
+messages = EctoPGMQ.read_messages(MyApp.Repo, "my_queue", 300, 4, message_grouping: :head)
 [^id_1, ^id_2, ^id_3] = Enum.map(messages, & &1.id)
 ```
 
@@ -50,7 +50,7 @@ messages = [
 ]
 
 [id_1, id_2, id_3, _, id_4] = EctoPGMQ.send_messages(MyApp.Repo, "my_queue", messages)
-messages = EctoPGMQ.read_messages(Myapp.Repo, "my_queue", 300, 4, message_grouping: :round_robin)
+messages = EctoPGMQ.read_messages(MyApp.Repo, "my_queue", 300, 4, message_grouping: :round_robin)
 [^id_1, ^id_3, ^id_4, ^id_2] = Enum.map(messages, & &1.id)
 ```
 
@@ -69,7 +69,7 @@ messages = [
 ]
 
 [id_1, id_2, id_3, id_4, _] = EctoPGMQ.send_messages(MyApp.Repo, "my_queue", messages)
-messages = EctoPGMQ.read_messages(Myapp.Repo, "my_queue", 300, 4, message_grouping: :throughput_optimized)
+messages = EctoPGMQ.read_messages(MyApp.Repo, "my_queue", 300, 4, message_grouping: :throughput_optimized)
 [^id_1, ^id_2, ^id_3, ^id_4] = Enum.map(messages, & &1.id)
 ```
 
@@ -78,6 +78,32 @@ messages = EctoPGMQ.read_messages(Myapp.Repo, "my_queue", 300, 4, message_groupi
 > If message groups are long-lived and high-volume, this method of reading can
 > effectively starve later groups. For more information, see
 > [Performance Considerations](#performance-considerations).
+
+## Motivating Example
+
+Assume that an application needs to process the
+[webhooks](custom_payload_types.md#motivating-example) for a transaction in
+order. The example below illustrates how FIFO message groups can be used to
+ensure that ordering:
+
+```elixir
+# Optimize queue for FIFO message groups
+EctoPGMQ.update_queue(MyApp.Repo, "webhook_queue", %{message_groups?: true})
+
+# Send a webhook to the queue
+webhook = %MyApp.Webhook{
+  body: %{"data" => 123_456},
+  url: URI.new!("https://host:443/path?foo=bar")
+}
+
+message = EctoPGMQ.Message.build(webhook, "transaction-123")
+EctoPGMQ.send_messages(MyApp.Repo, "webhook_queue", [message], payload_type: MyApp.Webhook)
+
+# Read a webhook from the queue
+read_opts = [message_grouping: :head, payload_type: MyApp.Webhook]
+messages = EctoPGMQ.read_messages(MyApp.Repo, "webhook_queue", 300, 1, read_opts)
+[%EctoPGMQ.Message{payload: %MyApp.Webhook{}}] = messages
+```
 
 ## Performance Considerations
 

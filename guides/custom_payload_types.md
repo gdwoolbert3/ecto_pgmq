@@ -31,7 +31,7 @@ defmodule MyApp.Webhook do
 
   use Ecto.Type
 
-  defstruct [:url, :body]
+  defstruct [:url, :body, :code]
 
   @doc false
   @impl Ecto.Type
@@ -39,14 +39,14 @@ defmodule MyApp.Webhook do
 
   @doc false
   @impl Ecto.Type
-  def dump(%__MODULE__{url: url, body: body}) do
-    {:ok, %{"body" => body, "url" => URI.to_string(url)}}
+  def dump(%__MODULE__{url: url, body: body, code: code}) do
+    {:ok, %{"body" => body, "url" => URI.to_string(url), "code" => code}}
   end
 
   @doc false
   @impl Ecto.Type
-  def load(%{"body" => body, "url" => url}) do
-    {:ok, %__MODULE__{body: body, url: URI.new!(url)}}
+  def load(%{"body" => body, "url" => url} = data) do
+    {:ok, %__MODULE__{body: body, code: data["code"], url: URI.new!(url)}}
   end
 
   @doc false
@@ -59,8 +59,12 @@ The examples below illustrate some of the ways that the above implementation can
 be used in practice:
 
 ```elixir
-# Send a webhook to a queue
+# Create a webhook queue
+EctoPGMQ.create_queue(MyApp.Repo, "webhook_queue")
+
+# Send a webhook to the queue
 webhook = %MyApp.Webhook{
+  code: nil,
   body: %{"data" => 123_456},
   url: URI.new!("https://host:443/path?foo=bar")
 }
@@ -68,9 +72,9 @@ webhook = %MyApp.Webhook{
 message = EctoPGMQ.Message.build(webhook)
 EctoPGMQ.send_messages(MyApp.Repo, "webhook_queue", [message], payload_type: MyApp.Webhook)
 
-# Read a webhook from a queue
+# Read a webhook from the queue
 messages = EctoPGMQ.read_messages(MyApp.Repo, "webhook_queue", 300, 1, payload_type: MyApp.Webhook)
-[%EctoPGMQ.Message{payload: %MyApp.Webhook{}} | _] = messages
+[%EctoPGMQ.Message{payload: %MyApp.Webhook{}}] = messages
 
 # Query for webhooks directly
 messages =

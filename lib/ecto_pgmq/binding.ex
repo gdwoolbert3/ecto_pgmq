@@ -1,6 +1,9 @@
 defmodule EctoPGMQ.Binding do
   @moduledoc """
   Read-only schema for PGMQ queue bindings.
+
+  For more information about message routing, see
+  [Message Routing](message_routing.md).
   """
 
   use Ecto.Schema

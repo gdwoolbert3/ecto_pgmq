@@ -46,7 +46,7 @@ if Code.ensure_loaded?(Broadway) do
     that the queue is not empty. Depending on the characteristics of the queue,
     this approach to consumption may be less taxing on the repo connection pool
     than poll-based consumption. For more information about notifications and
-    when, to use them see `EctoPGMQ.Notifications`. Sample producer options for
+    when to use them see `EctoPGMQ.Notifications`. Sample producer options for
     notification-based consumption can be seen below:
 
     ```elixir
@@ -524,8 +524,7 @@ if Code.ensure_loaded?(Broadway) do
       :erlang.start_timer(time, self(), :read)
     end
 
-    # TODO(Gordon) - update comment to ignore only specific check
-    # credo:disable-for-lines:30
+    # credo:disable-for-lines:30 Credo.Check.Refactor.Nesting
     defp start_worker(state, quantity) do
       task =
         Task.async(fn ->

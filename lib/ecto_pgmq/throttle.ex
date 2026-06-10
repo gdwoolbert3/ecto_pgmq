@@ -2,8 +2,8 @@ defmodule EctoPGMQ.Throttle do
   @moduledoc """
   Read-only schema for PGMQ queue notification throttles.
 
-  For more information about notification throttling, see
-  [Throttling](m:EctoPGMQ.Notifications#throttling).
+  For more information about notifications, see
+  [Notifications](notifications.md).
   """
 
   use Ecto.Schema
@@ -44,7 +44,7 @@ defmodule EctoPGMQ.Throttle do
 
   ## Interval Filtering
 
-  This schema uses a custom `Ecto.Type` to load the message age fields into a
+  This schema uses a custom `Ecto.Type` to load the throttle interval into a
   `t:Duration.t/0`. This custom type can cast both `t:Duration.t/0` structs and
   `t:non_neg_integer/0` times (in milliseconds):
 
