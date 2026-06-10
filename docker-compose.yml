@@ -1,4 +1,4 @@
-# TODO(Gordon) - name services
+name: ecto-pgmq
 
 services:
   postgres:

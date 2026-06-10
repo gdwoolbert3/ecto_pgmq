@@ -2,8 +2,6 @@ defmodule EctoPGMQ do
   @moduledoc """
   An opinionated PGMQ client for Elixir that builds on top of `Ecto` and the
   `Ecto.Adapters.Postgres` adapter.
-
-  TODO(Gordon) - support optionally pulling extension files from PGMQ GH?
   """
 
   alias Ecto.Repo
