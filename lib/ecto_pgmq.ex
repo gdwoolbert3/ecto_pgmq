@@ -3,94 +3,12 @@ defmodule EctoPGMQ do
   An opinionated PGMQ client for Elixir that builds on top of `Ecto` and the
   `Ecto.Adapters.Postgres` adapter.
 
-  ## PGMQ Installation
-
-  Because PGMQ is entirely made up of SQL objects, there are two available
-  installation methods:
-
-    * Extension Installation - This method installs PGMQ as a traditional
-      Postgres extension. This is the preferred installation method but it
-      requires access to the Postgres server file system and, therefore, may not
-      always be feasible.
-
-    * SQL Installation - This method installs PGMQ by manually creating all of
-      the necessary SQL objects and works entirely within the database.
-
-  `EctoPGMQ.Migrations` contains helper functions for managing both installation
-  methods.
-
-  For more information about managing the PGMQ extension, see the PGMQ
-  [Installation](https://github.com/pgmq/pgmq/blob/main/INSTALLATION.md) and
-  [Updating](https://github.com/pgmq/pgmq/blob/main/pgmq-extension/UPDATING.md)
-  guides.
-
-  ## Partitioning
-
-  PGMQ supports partitioning both queues and archives.
-
-  The [pg_partman extension](https://github.com/pgpartman/pg_partman) must be
-  available in order to use partitioning.
-
-  For more information about partitioning, see the
-  [PGMQ docs](https://github.com/pgmq/pgmq/tree/main?tab=readme-ov-file#partitioned-queues).
-
-  ## Polling
-
-  PGMQ supports Postgres server-side polling during read operations. Reading
-  with a poll can be used to reduce network round trips if there is a good
-  chance that demand can be satisfied in a short time **BUT** doing so utilizes
-  a connection for the duration of the read operation. As such, polling should
-  be avoided in situations where the DB connection pool is a bottleneck.
-
-  ## Custom Payload Types
-
-  `EctoPGMQ` leverages `Ecto.Type` and `Ecto.ParameterizedType` in order to
-  support custom payload types during both [send](`send_messages/4`) and
-  [read](`read_messages/5`) operations. The only requirement is that the custom
-  payload type must both dump to and load from a `t:map/0` (since PGMQ stores
-  message payloads in a `JSONB` column).
-
-  > #### Multiple Payload Types in a Queue {:.error}
+  > #### Read-Only Schemas {: .warning}
   >
-  > There are no guardrails in place to ensure that a single payload type is
-  > used for a given queue. Mixing multiple payload types in a single queue only
-  > works if they can all be loaded interchangably. This pattern is **NOT**
-  > recommended.
+  > All schemas in this library should be treated as read-only.
 
-  Message queries with custom payload types can also created by
-  `EctoPGMQ.Message.queue_query/2` and `EctoPGMQ.Message.archive_query/2`.
-
-  > #### Payload Types in Ecto Queries {: .warning}
-  >
-  > Due to how custom payload types are applied, non-map payloads can't be
-  > directly interpolated in an `Ecto.Query`. Instead, payloads must be cast
-  > with `Ecto.Query.API.type/2`:
-  >
-  > ```elixir
-  > "my_queue"
-  > |> EctoPGMQ.Message.queue_query(payload_type: MyType)
-  > |> where([m], m.payload == type(^my_custom_payload, MyType))
-  > ```
-  >
-  > Note that the second argument to the aforementioned function is **NOT** a
-  > `t:EctoPGMQ.Message.payload_type/0` but rather an `t:Ecto.Type.t/0`.
-  >
-  > Alternatively, PGMQ has experimental support for payload filtering. For more
-  > information, see `t:EctoPGMQ.PGMQ.conditional/0`.
-
-  TODO(Gordon) - blurb about topics and routing
-  TODO(Gordon) - define all types in PGMQ module first?
-  TODO(Gordon) - allow timestamp vt in message update spec (and producer ack action spec)
-  TODO(Gordon) - manually decorate messages with `group` in PGMQ.set_vt
-  TODO(Gordon) - expose `bindings` in (create/update)_queue?
-  TODO(Gordon) - use term_to_binary instead of pid_to_list in producer tests
-  TODO(Gordon) - think about places where it makes sense to accept either queue or queue name?
-  TODO(Gordon) - use aliases in doctests, not imports?
-  TODO(Gordon) - consider creating specific docs for FIFO groups, PGMQ installation, and custom payload types
-  TODO(Gordon) - use "A", "B", "C" for groups instead of "foo", "bar", "baz"
-  TODO(Gordon) - consider allowing maps when sending messages
-  TODO(Gordon) - move read-only warning out here
   TODO(Gordon) - support optionally pulling extension files from PGMQ GH?
+  TODO(Gordon) - Update all documentation links accordingly when finished
   """
 
   alias Ecto.Repo
@@ -125,9 +43,6 @@ defmodule EctoPGMQ do
 
   @typedoc "A message destination."
   @type destination :: Queue.name() | {:queue, Queue.name()} | {:routing_key, PGMQ.routing_key()}
-
-  @typedoc "A message specification."
-  @type message_spec :: PGMQ.payload() | Message.specification()
 
   @typedoc """
   Message update attributes.
@@ -231,8 +146,6 @@ defmodule EctoPGMQ do
 
   @typedoc """
   Queue update attributes.
-
-  TODO(Gordon) - validate that these docs are not malformed
 
   The following attributes are supported:
 
@@ -453,7 +366,8 @@ defmodule EctoPGMQ do
 
   ## Examples
 
-      iex> EctoPGMQ.send_messages(Repo, "my_queue", [%{"foo" => 1}])
+      iex> messages = [Message.build(%{"id" => 1})]
+      iex> EctoPGMQ.send_messages(Repo, "my_queue", messages)
       iex> EctoPGMQ.purge_queue(Repo, "my_queue")
       1
   """
@@ -556,7 +470,8 @@ defmodule EctoPGMQ do
 
   ## Examples
 
-      iex> %{"my_queue" => ids} = EctoPGMQ.send_messages(Repo, "my_queue", [%{"foo" => 1}])
+      iex> messages = [Message.build(%{"id" => 1})]
+      iex> %{"my_queue" => ids} = EctoPGMQ.send_messages(Repo, "my_queue", messages)
       iex> EctoPGMQ.archive_messages(Repo, "my_queue", ids)
       :ok
   """
@@ -575,7 +490,8 @@ defmodule EctoPGMQ do
 
   ## Examples
 
-      iex> %{"my_queue" => ids} = EctoPGMQ.send_messages(Repo, "my_queue", [%{"foo" => 1}])
+      iex> messages = [Message.build(%{"id" => 1})]
+      iex> %{"my_queue" => ids} = EctoPGMQ.send_messages(Repo, "my_queue", messages)
       iex> EctoPGMQ.delete_messages(Repo, "my_queue", ids)
       :ok
   """
@@ -587,8 +503,6 @@ defmodule EctoPGMQ do
   @doc """
   Reads messages from the given queue.
 
-  TODO(Gordon) - more doctests
-
   ## Options
 
   See `t:read_messages_opts/0` for information about the options supported by
@@ -596,8 +510,10 @@ defmodule EctoPGMQ do
 
   ## Examples
 
-      iex> EctoPGMQ.send_messages(Repo, "my_queue", [%{"foo" => 1}])
-      iex> [%Message{reads: 1}] = EctoPGMQ.read_messages(Repo, "my_queue", 5, 2)
+      iex> vt = Duration.new!(second: 5)
+      iex> messages = [Message.build(%{"id" => 1})]
+      iex> EctoPGMQ.send_messages(Repo, "my_queue", messages)
+      iex> [%Message{reads: 1}] = EctoPGMQ.read_messages(Repo, "my_queue", vt, 2)
   """
   @doc group: "Message API"
   @spec read_messages(Repo.t(), Queue.name(), visibility_timeout(), PGMQ.quantity()) :: [Message.t()]
@@ -659,11 +575,6 @@ defmodule EctoPGMQ do
   @doc """
   Sends messages to the given queue.
 
-  TODO(Gordon) - document and add payload type options
-  TODO(Gordon) - update all locations where Message.build/3 is being used with only a payload
-  TODO(Gordon) - support queue OR routing key destinations
-  TODO(Gordon) - more doctests?
-
   ## Options
 
   In addition to the standard [query options](`m:EctoPGMQ.PGMQ#query-options`),
@@ -671,33 +582,37 @@ defmodule EctoPGMQ do
 
     * `:delay` - An optional `t:delay/0` for the messages. Defaults to `0`.
 
+    * `:payload_type` - An optional `t:EctoPGMQ.Message.payload_type/0` for the
+      message payloads. Defaults to `:map`.
+
   ## Examples
 
+      iex> messages = [Message.build(%{"id" => 1})]
       iex> delay = Duration.new!(hour: 1)
-      iex> %{"my_queue" => [id]} = EctoPGMQ.send_messages(Repo, "my_queue", [%{"foo" => 1}], delay: delay)
+      iex> %{"my_queue" => [id]} = EctoPGMQ.send_messages(Repo, "my_queue", messages, delay: delay)
+      iex> is_integer(id)
+      true
+
+      iex> messages = [Message.build(%{"id" => 1})]
+      iex> EctoPGMQ.PGMQ.bind_topic(Repo, "#", "my_queue")
+      iex> destination = {:routing_key, "my.routing.key"}
+      iex> %{"my_queue" => [id]} = EctoPGMQ.send_messages(Repo, destination, messages)
       iex> is_integer(id)
       true
   """
   @doc group: "Message API"
-  @spec send_messages(Repo.t(), destination(), [message_spec()]) :: PGMQ.queue_message_ids()
+  @spec send_messages(Repo.t(), destination(), [Message.message()]) :: PGMQ.queue_message_ids()
   @spec send_messages(
           Repo.t(),
           destination(),
-          [message_spec()],
-          [{:delay, delay()} | PGMQ.query_opt()]
+          [Message.message()],
+          [{:delay, delay()} | {:payload_type, Message.payload_type()} | PGMQ.query_opt()]
         ) :: PGMQ.queue_message_ids()
   def send_messages(repo, destination, messages, opts \\ []) do
     {delay, opts} = Keyword.pop(opts, :delay, 0)
     delay = maybe_to_time(delay, :second)
     {payload_type, opts} = Keyword.pop(opts, :payload_type, :map)
-
-    {payloads, headers} =
-      messages
-      |> Enum.map(fn
-        spec when Message.is_specification(spec) -> spec
-        payload when is_non_struct_map(payload) -> Message.build(payload)
-      end)
-      |> Message.to_pgmq_payloads_and_headers(payload_type)
+    {payloads, headers} = Message.to_pgmq_payloads_and_headers(messages, payload_type)
 
     destination
     |> case do
@@ -724,8 +639,9 @@ defmodule EctoPGMQ do
 
   ## Examples
 
+      iex> messages = [Message.build(%{"id" => 1})]
       iex> visibility_timeout = Duration.new!(minute: 5)
-      iex> %{"my_queue" => ids} = EctoPGMQ.send_messages(Repo, "my_queue", [%{"foo" => 1}])
+      iex> %{"my_queue" => ids} = EctoPGMQ.send_messages(Repo, "my_queue", messages)
       iex> EctoPGMQ.update_messages(Repo, "my_queue", ids, %{visibility_timeout: visibility_timeout})
       :ok
   """

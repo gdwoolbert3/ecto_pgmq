@@ -1,11 +1,6 @@
 defmodule EctoPGMQ.Queue do
   @moduledoc """
-  Schema for PGMQ queues.
-
-  > #### Read-Only {: .warning}
-  >
-  > This schema should be treated as read-only. Queues can be configured with
-  > `EctoPGMQ.create_queue/4` and `EctoPGMQ.update_queue/4`.
+  Read-only schema for PGMQ queues.
   """
 
   use Ecto.Schema

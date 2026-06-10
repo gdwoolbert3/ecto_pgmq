@@ -101,14 +101,14 @@ defmodule EctoPGMQ.TestHelpers do
   This function assumes that the given messages, message IDs and message
   specifications are all in the same order.
   """
-  @spec same_messages?([Message.t()], [Message.id()], [Message.specification()]) :: boolean()
+  @spec same_messages?([Message.t()], [Message.id()], [Message.message()]) :: boolean()
   def same_messages?(messages, ids, _) when length(messages) != length(ids), do: false
   def same_messages?(messages, _, specs) when length(messages) != length(specs), do: false
 
   def same_messages?(messages, ids, specs) do
     [ids, specs, messages]
     |> Enum.zip()
-    |> Enum.all?(fn {id, {:spec, payload, headers}, message} ->
+    |> Enum.all?(fn {id, {:message, payload, headers}, message} ->
       match?(
         %Message{
           id: ^id,

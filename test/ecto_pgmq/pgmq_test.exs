@@ -302,7 +302,7 @@ defmodule EctoPGMQ.PGMQTest do
 
   describe "pop/4" do
     test "will pop messages", ctx do
-      messages = [%{"id" => 1}, %{"id" => 2}]
+      messages = [Message.build(%{"id" => 1}), Message.build(%{"id" => 2})]
       EctoPGMQ.send_messages(Repo, ctx.queue.name, messages)
       messages = all_queue_messages(Repo, ctx.queue.name)
 
@@ -322,7 +322,7 @@ defmodule EctoPGMQ.PGMQTest do
 
   describe "purge_queue/3" do
     test "will purge messages from a queue", ctx do
-      messages = [%{"id" => 1}, %{"id" => 2}]
+      messages = [Message.build(%{"id" => 1}), Message.build(%{"id" => 2})]
       EctoPGMQ.send_messages(Repo, ctx.queue.name, messages)
 
       # Validate that messages are in the queue
@@ -338,7 +338,7 @@ defmodule EctoPGMQ.PGMQTest do
 
   describe "read/6" do
     test "will read messages from a queue", ctx do
-      messages = [%{"id" => 1}, %{"id" => 2}]
+      messages = [Message.build(%{"id" => 1}), Message.build(%{"id" => 2})]
       EctoPGMQ.send_messages(Repo, ctx.queue.name, messages)
       messages = all_queue_messages(Repo, ctx.queue.name)
       response = PGMQ.read(Repo, ctx.queue.name, 300, 2)
@@ -351,7 +351,7 @@ defmodule EctoPGMQ.PGMQTest do
     end
 
     test "will read messages from a queue when too many are requested", ctx do
-      messages = [%{"id" => 1}, %{"id" => 2}]
+      messages = [Message.build(%{"id" => 1}), Message.build(%{"id" => 2})]
       EctoPGMQ.send_messages(Repo, ctx.queue.name, messages)
       messages = all_queue_messages(Repo, ctx.queue.name)
       response = PGMQ.read(Repo, ctx.queue.name, 300, 3)
@@ -386,7 +386,7 @@ defmodule EctoPGMQ.PGMQTest do
     end
 
     test "will read messages from a queue when too many are requested", ctx do
-      messages = [%{"id" => 1}, %{"id" => 2}]
+      messages = [Message.build(%{"id" => 1}), Message.build(%{"id" => 2})]
       EctoPGMQ.send_messages(Repo, ctx.queue.name, messages)
       messages = all_queue_messages(Repo, ctx.queue.name)
       response = PGMQ.read_grouped(Repo, ctx.queue.name, 300, 3)
@@ -503,7 +503,7 @@ defmodule EctoPGMQ.PGMQTest do
     end
 
     test "will read messages from a queue when too many are requested", ctx do
-      messages = [%{"id" => 1}, %{"id" => 2}]
+      messages = [Message.build(%{"id" => 1}), Message.build(%{"id" => 2})]
       EctoPGMQ.send_messages(Repo, ctx.queue.name, messages)
       messages = all_queue_messages(Repo, ctx.queue.name)
       response = PGMQ.read_grouped_rr(Repo, ctx.queue.name, 300, 3)
@@ -538,7 +538,7 @@ defmodule EctoPGMQ.PGMQTest do
     end
 
     test "will read messages from a queue when too many are requested", ctx do
-      messages = [%{"id" => 1}, %{"id" => 2}]
+      messages = [Message.build(%{"id" => 1}), Message.build(%{"id" => 2})]
       EctoPGMQ.send_messages(Repo, ctx.queue.name, messages)
       messages = all_queue_messages(Repo, ctx.queue.name)
       response = PGMQ.read_grouped_rr_with_poll(Repo, ctx.queue.name, 300, 3, 1, 500)
@@ -573,7 +573,7 @@ defmodule EctoPGMQ.PGMQTest do
     end
 
     test "will read messages from a queue when too many are requested", ctx do
-      messages = [%{"id" => 1}, %{"id" => 2}]
+      messages = [Message.build(%{"id" => 1}), Message.build(%{"id" => 2})]
       EctoPGMQ.send_messages(Repo, ctx.queue.name, messages)
       messages = all_queue_messages(Repo, ctx.queue.name)
       response = PGMQ.read_grouped_with_poll(Repo, ctx.queue.name, 300, 3, 1, 500)
@@ -588,7 +588,7 @@ defmodule EctoPGMQ.PGMQTest do
 
   describe "read_with_poll/8" do
     test "will read messages from a queue", ctx do
-      messages = [%{"id" => 1}, %{"id" => 2}]
+      messages = [Message.build(%{"id" => 1}), Message.build(%{"id" => 2})]
       EctoPGMQ.send_messages(Repo, ctx.queue.name, messages)
       messages = all_queue_messages(Repo, ctx.queue.name)
       response = PGMQ.read_with_poll(Repo, ctx.queue.name, 300, 2)
@@ -601,7 +601,7 @@ defmodule EctoPGMQ.PGMQTest do
     end
 
     test "will read messages from a queue when too many are requested", ctx do
-      messages = [%{"id" => 1}, %{"id" => 2}]
+      messages = [Message.build(%{"id" => 1}), Message.build(%{"id" => 2})]
       EctoPGMQ.send_messages(Repo, ctx.queue.name, messages)
       messages = all_queue_messages(Repo, ctx.queue.name)
       response = PGMQ.read_with_poll(Repo, ctx.queue.name, 300, 3, 1, 500)
@@ -666,7 +666,7 @@ defmodule EctoPGMQ.PGMQTest do
 
   describe "set_vt/5" do
     test "will update message visibility timeouts with an integer delay", ctx do
-      messages = [%{"id" => 1}, %{"id" => 2}]
+      messages = [Message.build(%{"id" => 1}), Message.build(%{"id" => 2})]
       response = EctoPGMQ.send_messages(Repo, ctx.queue.name, messages)
 
       assert {:ok, message_ids} = Map.fetch(response, ctx.queue.name)
@@ -682,7 +682,7 @@ defmodule EctoPGMQ.PGMQTest do
     end
 
     test "will update message visibility timeouts with a timestamp delay", ctx do
-      messages = [%{"id" => 1}, %{"id" => 2}]
+      messages = [Message.build(%{"id" => 1}), Message.build(%{"id" => 2})]
       response = EctoPGMQ.send_messages(Repo, ctx.queue.name, messages)
 
       assert {:ok, message_ids} = Map.fetch(response, ctx.queue.name)

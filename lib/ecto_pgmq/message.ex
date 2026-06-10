@@ -1,14 +1,6 @@
 defmodule EctoPGMQ.Message do
   @moduledoc """
-  Schema for PGMQ messages.
-
-  > #### Read-Only {: .warning}
-  >
-  > This schema should be treated as read-only.
-
-  ## Headers
-
-  TODO(Gordon) - Add this
+  Read-only schema for PGMQ messages.
   """
 
   use Ecto.Schema
@@ -67,7 +59,7 @@ defmodule EctoPGMQ.Message do
 
   # TODO(Gordon) - reconsider using a public type here to avoid opaque warnings?
   @typedoc "A PGMQ message specification."
-  @opaque specification :: record(:spec, payload: payload() | nil, headers: headers() | nil)
+  @opaque message :: record(:message, payload: payload() | nil, headers: headers() | nil)
 
   @typedoc "A PGMQ message."
   @type t :: %__MODULE__{
@@ -85,7 +77,7 @@ defmodule EctoPGMQ.Message do
   # Private Records
   ################################
 
-  Record.defrecordp(:spec, payload: nil, headers: nil)
+  Record.defrecordp(:message, payload: nil, headers: nil)
 
   ################################
   # Schema
@@ -105,14 +97,6 @@ defmodule EctoPGMQ.Message do
   end
 
   ################################
-  # Protected Guards
-  ################################
-
-  @doc false
-  @spec is_specification(term()) :: Macro.t()
-  defguard is_specification(term) when Record.is_record(term, :spec)
-
-  ################################
   # Public Query API
   ################################
 
@@ -128,7 +112,7 @@ defmodule EctoPGMQ.Message do
 
   ## Examples
 
-      iex> messages = [%{"id" => 1}]
+      iex> messages = [Message.build(%{"id" => 1})]
       iex> %{"my_queue" => ids} = EctoPGMQ.send_messages(Repo, "my_queue", messages)
       iex> EctoPGMQ.archive_messages(Repo, "my_queue", ids)
       iex> [%Message{}] = Repo.all(Message.archive_query("my_queue"))
@@ -164,7 +148,7 @@ defmodule EctoPGMQ.Message do
 
   ## Examples
 
-      iex> messages = [%{"id" => 1}]
+      iex> messages = [Message.build(%{"id" => 1})]
       iex> EctoPGMQ.send_messages(Repo, "my_queue", messages)
       iex> [%Message{}] = Repo.all(Message.queue_query("my_queue"))
   """
@@ -204,21 +188,21 @@ defmodule EctoPGMQ.Message do
   ## Examples
 
       iex> Message.build(%{"id" => 1})
-      {:spec, %{"id" => 1}, nil}
+      {:message, %{"id" => 1}, nil}
 
       iex> Message.build(%{"id" => 1}, %{"header" => "foo"})
-      {:spec, %{"id" => 1}, %{"header" => "foo"}}
+      {:message, %{"id" => 1}, %{"header" => "foo"}}
 
       iex> Message.build(%{"id" => 1}, "A")
-      {:spec, %{"id" => 1}, %{"#{PGMQ.group_header()}" => "A"}}
+      {:message, %{"id" => 1}, %{"#{PGMQ.group_header()}" => "A"}}
 
       iex> Message.build(%{"id" => 1}, "A", %{"#{PGMQ.group_header()}" => "B"})
-      {:spec, %{"id" => 1}, %{"#{PGMQ.group_header()}" => "A"}}
+      {:message, %{"id" => 1}, %{"#{PGMQ.group_header()}" => "A"}}
   """
   @doc group: "Message API"
-  @spec build(payload() | nil) :: specification()
-  @spec build(payload() | nil, group() | headers() | nil) :: specification()
-  @spec build(payload() | nil, group() | nil, headers() | nil) :: specification()
+  @spec build(payload() | nil) :: message()
+  @spec build(payload() | nil, group() | headers() | nil) :: message()
+  @spec build(payload() | nil, group() | nil, headers() | nil) :: message()
   def build(payload), do: build(payload, nil, nil)
   def build(payload, group) when is_binary(group), do: build(payload, group, nil)
   def build(payload, headers), do: build(payload, nil, headers)
@@ -236,7 +220,7 @@ defmodule EctoPGMQ.Message do
           headers
       end
 
-    spec(payload: payload, headers: headers)
+    message(payload: payload, headers: headers)
   end
 
   @doc """
@@ -260,12 +244,12 @@ defmodule EctoPGMQ.Message do
       nil
   """
   @doc group: "Message API"
-  @spec group(t() | specification() | headers() | nil) :: group() | nil
+  @spec group(t() | message() | headers() | nil) :: group() | nil
   def group(%__MODULE__{} = message), do: group(message.headers)
 
-  def group(spec) when Record.is_record(spec, :spec) do
-    spec
-    |> spec(:headers)
+  def group(message) when Record.is_record(message, :message) do
+    message
+    |> message(:headers)
     |> group()
   end
 
@@ -280,14 +264,14 @@ defmodule EctoPGMQ.Message do
   ################################
 
   @doc false
-  @spec to_pgmq_payloads_and_headers([specification()], payload_type()) :: {[PGMQ.payload()], [headers()]}
-  def to_pgmq_payloads_and_headers(specs, payload_type) do
+  @spec to_pgmq_payloads_and_headers([message()], payload_type()) :: {[PGMQ.payload()], [headers()]}
+  def to_pgmq_payloads_and_headers(messages, payload_type) do
     payload_ecto_type = payload_type_to_ecto_type(payload_type)
 
-    specs
-    |> Enum.map(fn spec ->
-      payload = spec(spec, :payload)
-      headers = spec(spec, :headers)
+    messages
+    |> Enum.map(fn message ->
+      payload = message(message, :payload)
+      headers = message(message, :headers)
 
       case Ecto.Type.dump(payload_ecto_type, payload) do
         {:ok, payload} when is_map(payload) ->

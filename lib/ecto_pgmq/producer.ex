@@ -236,7 +236,7 @@ if Code.ensure_loaded?(Broadway) do
             :delete
             | :archive
             | :nothing
-            | {:update_visibility_timeout, EctoPGMQ.visibility_timeout()}
+            | {:update_visibility_timeout, EctoPGMQ.delay()}
 
     ################################
     # Private Types

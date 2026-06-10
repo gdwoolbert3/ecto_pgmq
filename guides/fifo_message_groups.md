@@ -24,11 +24,11 @@ group:
 
 ```elixir
 messages = [
-  Message.build(%{"foo" => 1}, "A"),
-  Message.build(%{"foo" => 2}, "A"),
-  Message.build(%{"foo" => 3}, "B"),
-  Message.build(%{"foo" => 4}, "B"),
-  Message.build(%{"foo" => 5}, "C")
+  Message.build(%{"id" => 1}, "A"),
+  Message.build(%{"id" => 2}, "A"),
+  Message.build(%{"id" => 3}, "B"),
+  Message.build(%{"id" => 4}, "B"),
+  Message.build(%{"id" => 5}, "C")
 ]
 
 [id_1, _, id_2, _, id_3] = EctoPGMQ.send_messages(MyApp.Repo, "my_queue", messages)
@@ -42,11 +42,11 @@ This method will fairly interleave messages from all available groups:
 
 ```elixir
 messages = [
-  Message.build(%{"foo" => 1}, "A"),
-  Message.build(%{"foo" => 2}, "A"),
-  Message.build(%{"foo" => 3}, "B"),
-  Message.build(%{"foo" => 4}, "B"),
-  Message.build(%{"foo" => 5}, "C")
+  Message.build(%{"id" => 1}, "A"),
+  Message.build(%{"id" => 2}, "A"),
+  Message.build(%{"id" => 3}, "B"),
+  Message.build(%{"id" => 4}, "B"),
+  Message.build(%{"id" => 5}, "C")
 ]
 
 [id_1, id_2, id_3, _, id_4] = EctoPGMQ.send_messages(MyApp.Repo, "my_queue", messages)
@@ -61,11 +61,11 @@ throughput:
 
 ```elixir
 messages = [
-  Message.build(%{"foo" => 1}, "A"),
-  Message.build(%{"foo" => 2}, "A"),
-  Message.build(%{"foo" => 3}, "B"),
-  Message.build(%{"foo" => 4}, "B"),
-  Message.build(%{"foo" => 5}, "C")
+  Message.build(%{"id" => 1}, "A"),
+  Message.build(%{"id" => 2}, "A"),
+  Message.build(%{"id" => 3}, "B"),
+  Message.build(%{"id" => 4}, "B"),
+  Message.build(%{"id" => 5}, "C")
 ]
 
 [id_1, id_2, id_3, id_4, _] = EctoPGMQ.send_messages(MyApp.Repo, "my_queue", messages)

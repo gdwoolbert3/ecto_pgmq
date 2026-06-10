@@ -1,11 +1,6 @@
 defmodule EctoPGMQ.Throttle do
   @moduledoc """
-  Schema for PGMQ queue notification throttles.
-
-  > #### Read-Only {: .warning}
-  >
-  > This schema should be treated as read-only. Notification throttles can be
-  > configured with `EctoPGMQ.create_queue/4` and `EctoPGMQ.drop_queue/3`.
+  Read-only schema for PGMQ queue notification throttles.
 
   For more information about notification throttling, see
   [Throttling](m:EctoPGMQ.Notifications#throttling).

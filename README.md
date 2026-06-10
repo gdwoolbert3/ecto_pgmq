@@ -98,8 +98,8 @@ end
 Messages can be sent to a queue with the following function:
 
 ```elixir
-# TODO(Gordon) - update this function to use build/2?
-EctoPGMQ.send_messages(MyApp.Repo, "my_queue", [%{"foo" => 1}, %{"bar" => 2}])
+messages = [Message.build(%{"id" => 1}), Message.build(%{"id" => 2})]
+EctoPGMQ.send_messages(MyApp.Repo, "my_queue", messages)
 ```
 
 ### Reading Messages

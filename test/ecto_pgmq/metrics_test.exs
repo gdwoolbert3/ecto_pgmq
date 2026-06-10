@@ -21,7 +21,7 @@ defmodule EctoPGMQ.MetricsTest do
     end
 
     test "will allow filtering on message age field with a Duration struct", ctx do
-      messages = [%{"id" => 1}, %{"id" => 2}]
+      messages = [Message.build(%{"id" => 1}), Message.build(%{"id" => 2})]
       EctoPGMQ.send_messages(Repo, ctx.queue.name, messages)
 
       # Validate that Duration struct can be used in query
@@ -31,7 +31,7 @@ defmodule EctoPGMQ.MetricsTest do
     end
 
     test "will allow filtering on message age field with an integer time", ctx do
-      messages = [%{"id" => 1}, %{"id" => 2}]
+      messages = [Message.build(%{"id" => 1}), Message.build(%{"id" => 2})]
       EctoPGMQ.send_messages(Repo, ctx.queue.name, messages)
 
       # Validate that integer time can be used in query

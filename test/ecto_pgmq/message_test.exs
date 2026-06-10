@@ -146,25 +146,25 @@ defmodule EctoPGMQ.MessageTest do
     @describetag queue: false
 
     test "will create a specification from a payload" do
-      assert Message.build(%{"id" => 1}) == {:spec, %{"id" => 1}, nil}
+      assert Message.build(%{"id" => 1}) == {:message, %{"id" => 1}, nil}
     end
 
     test "will create a specification from a payload and a group" do
       spec = Message.build(%{"id" => 1}, "A")
 
-      assert spec == {:spec, %{"id" => 1}, %{PGMQ.group_header() => "A"}}
+      assert spec == {:message, %{"id" => 1}, %{PGMQ.group_header() => "A"}}
     end
 
     test "will create a specification from a payload and headers" do
       spec = Message.build(%{"id" => 1}, %{"header" => "foo"})
 
-      assert spec == {:spec, %{"id" => 1}, %{"header" => "foo"}}
+      assert spec == {:message, %{"id" => 1}, %{"header" => "foo"}}
     end
 
     test "will create a specification from a paylod, a group, and headers" do
       spec = Message.build(%{"id" => 1}, "B", %{PGMQ.group_header() => "A", "header" => "foo"})
 
-      assert spec == {:spec, %{"id" => 1}, %{PGMQ.group_header() => "B", "header" => "foo"}}
+      assert spec == {:message, %{"id" => 1}, %{PGMQ.group_header() => "B", "header" => "foo"}}
     end
   end
 
@@ -200,7 +200,8 @@ defmodule EctoPGMQ.MessageTest do
 
     @tag queue: true
     test "will not extract the group from a message without headers", ctx do
-      response = EctoPGMQ.send_messages(Repo, ctx.queue.name, [%{"id" => 1}])
+      messages = [Message.build(%{"id" => 1})]
+      response = EctoPGMQ.send_messages(Repo, ctx.queue.name, messages)
 
       assert {:ok, [message_id]} = Map.fetch(response, ctx.queue.name)
 

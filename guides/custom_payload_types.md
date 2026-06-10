@@ -2,8 +2,6 @@
 
 This guide covers the usage of custom payload types.
 
-TODO(Gordon) - add warning about single type per queue
-
 ## When to Use
 
 One of the many benefits of `Ecto` is the strict separation of database data and
@@ -14,6 +12,12 @@ dumps to and loads from a `t:map/0`.
 
 Custom payload types are supported by all `EctoPGMQ` functions that read or
 write PGMQ messages.
+
+> #### Multiple Payload Types in a Queue {:.error}
+>
+> There are no guardrails in place to ensure that a single payload type is used
+> for a given queue. Mixing multiple payload types in a single queue only works
+> if they can all be loaded interchangably. This pattern is **NOT** recommended.
 
 ## Motivating Example
 

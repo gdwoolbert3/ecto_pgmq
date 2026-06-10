@@ -160,7 +160,7 @@ defmodule EctoPGMQ.PGMQ do
 
   ## Examples
 
-      iex> message_ids = PGMQ.send_batch(Repo, "my_queue", [%{"foo" => 1}, %{"bar" => 2}])
+      iex> message_ids = PGMQ.send_batch(Repo, "my_queue", [%{"id" => 1}, %{"id" => 2}])
       iex> PGMQ.archive(Repo, "my_queue", message_ids)
       :ok
   """
@@ -364,7 +364,7 @@ defmodule EctoPGMQ.PGMQ do
 
   ## Examples
 
-      iex> message_ids = PGMQ.send_batch(Repo, "my_queue", [%{"foo" => 1}, %{"bar" => 2}])
+      iex> message_ids = PGMQ.send_batch(Repo, "my_queue", [%{"id" => 1}, %{"id" => 2}])
       iex> PGMQ.delete(Repo, "my_queue", message_ids)
       :ok
   """
@@ -529,7 +529,7 @@ defmodule EctoPGMQ.PGMQ do
 
   ## Examples
 
-      iex> PGMQ.send_batch(Repo, "my_queue", [%{"foo" => 1}])
+      iex> PGMQ.send_batch(Repo, "my_queue", [%{"id" => 1}])
       iex> [%Message{reads: 0}] = PGMQ.pop(Repo, "my_queue", 1)
   """
   @spec pop(Repo.t(), Queue.name(), quantity()) :: [Message.t()]
@@ -549,7 +549,7 @@ defmodule EctoPGMQ.PGMQ do
 
   ## Examples
 
-      iex> PGMQ.send_batch(Repo, "my_queue", [%{"foo" => 1}])
+      iex> PGMQ.send_batch(Repo, "my_queue", [%{"id" => 1}])
       iex> PGMQ.purge_queue(Repo, "my_queue")
       1
   """
@@ -570,7 +570,7 @@ defmodule EctoPGMQ.PGMQ do
 
   ## Examples
 
-      iex> PGMQ.send_batch(Repo, "my_queue", [%{"foo" => 1}])
+      iex> PGMQ.send_batch(Repo, "my_queue", [%{"id" => 1}])
       iex> [%Message{reads: 1}] = PGMQ.read(Repo, "my_queue", 5, 1)
   """
   @spec read(Repo.t(), Queue.name(), visibility_timeout(), quantity()) :: [Message.t()]
@@ -594,7 +594,7 @@ defmodule EctoPGMQ.PGMQ do
 
   ## Examples
 
-      iex> PGMQ.send_batch(Repo, "my_queue", [%{"foo" => 1}])
+      iex> PGMQ.send_batch(Repo, "my_queue", [%{"id" => 1}])
       iex> [%Message{reads: 1}] = PGMQ.read_grouped(Repo, "my_queue", 5, 1)
   """
   @spec read_grouped(Repo.t(), Queue.name(), visibility_timeout(), quantity()) :: [Message.t()]
@@ -617,7 +617,7 @@ defmodule EctoPGMQ.PGMQ do
 
   ## Examples
 
-      iex> PGMQ.send_batch(Repo, "my_queue", [%{"foo" => 1}])
+      iex> PGMQ.send_batch(Repo, "my_queue", [%{"id" => 1}])
       iex> [%Message{reads: 1}] = PGMQ.read_grouped_head(Repo, "my_queue", 5, 1)
   """
   @spec read_grouped_head(Repo.t(), Queue.name(), visibility_timeout(), quantity()) :: [Message.t()]
@@ -642,7 +642,7 @@ defmodule EctoPGMQ.PGMQ do
 
   ## Examples
 
-      iex> PGMQ.send_batch(Repo, "my_queue", [%{"foo" => 1}])
+      iex> PGMQ.send_batch(Repo, "my_queue", [%{"id" => 1}])
       iex> [%Message{reads: 1}] = PGMQ.read_grouped_head_with_poll(Repo, "my_queue", 5, 1, 5, 500)
   """
   @spec read_grouped_head_with_poll(Repo.t(), Queue.name(), visibility_timeout(), quantity()) :: [Message.t()]
@@ -696,7 +696,7 @@ defmodule EctoPGMQ.PGMQ do
 
   ## Examples
 
-      iex> PGMQ.send_batch(Repo, "my_queue", [%{"foo" => 1}])
+      iex> PGMQ.send_batch(Repo, "my_queue", [%{"id" => 1}])
       iex> [%Message{reads: 1}] = PGMQ.read_grouped_rr(Repo, "my_queue", 5, 1)
   """
   @spec read_grouped_rr(Repo.t(), Queue.name(), visibility_timeout(), quantity()) :: [Message.t()]
@@ -722,7 +722,7 @@ defmodule EctoPGMQ.PGMQ do
 
   ## Examples
 
-      iex> PGMQ.send_batch(Repo, "my_queue", [%{"foo" => 1}])
+      iex> PGMQ.send_batch(Repo, "my_queue", [%{"id" => 1}])
       iex> [%Message{reads: 1}] = PGMQ.read_grouped_rr_with_poll(Repo, "my_queue", 5, 1, 5, 500)
   """
   @spec read_grouped_rr_with_poll(Repo.t(), Queue.name(), visibility_timeout(), quantity()) :: [Message.t()]
@@ -778,7 +778,7 @@ defmodule EctoPGMQ.PGMQ do
 
   ## Examples
 
-      iex> PGMQ.send_batch(Repo, "my_queue", [%{"foo" => 1}])
+      iex> PGMQ.send_batch(Repo, "my_queue", [%{"id" => 1}])
       iex> [%Message{reads: 1}] = PGMQ.read_grouped_with_poll(Repo, "my_queue", 5, 1, 5, 500)
   """
   @spec read_grouped_with_poll(Repo.t(), Queue.name(), visibility_timeout(), quantity()) :: [Message.t()]
@@ -824,7 +824,7 @@ defmodule EctoPGMQ.PGMQ do
 
   ## Examples
 
-      iex> PGMQ.send_batch(Repo, "my_queue", [%{"foo" => 1}])
+      iex> PGMQ.send_batch(Repo, "my_queue", [%{"id" => 1}])
       iex> [%Message{reads: 1}] = PGMQ.read_with_poll(Repo, "my_queue", 5, 1, 5, 500)
   """
   @spec read_with_poll(Repo.t(), Queue.name(), visibility_timeout(), quantity()) :: [Message.t()]
@@ -879,12 +879,12 @@ defmodule EctoPGMQ.PGMQ do
 
   ## Examples
 
-      iex> [message_id] = PGMQ.send_batch(Repo, "my_queue", [%{"foo" => 1}])
+      iex> [message_id] = PGMQ.send_batch(Repo, "my_queue", [%{"id" => 1}])
       iex> is_integer(message_id)
       true
 
       iex> delay = DateTime.utc_now()
-      iex> [message_id] = PGMQ.send_batch(Repo, "my_queue", [%{"foo" => 1}], nil, delay)
+      iex> [message_id] = PGMQ.send_batch(Repo, "my_queue", [%{"id" => 1}], nil, delay)
       iex> is_integer(message_id)
       true
   """
@@ -925,13 +925,13 @@ defmodule EctoPGMQ.PGMQ do
   ## Examples
 
       iex> PGMQ.bind_topic(Repo, "#", "my_queue")
-      iex> %{"my_queue" => [message_id]} = PGMQ.send_batch_topic(Repo, "my.routing.key", [%{"foo" => 1}])
+      iex> %{"my_queue" => [message_id]} = PGMQ.send_batch_topic(Repo, "my.routing.key", [%{"id" => 1}])
       iex> is_integer(message_id)
       true
 
       iex> delay = DateTime.utc_now()
       iex> PGMQ.bind_topic(Repo, "#", "my_queue")
-      iex> %{"my_queue" => [message_id]} = PGMQ.send_batch_topic(Repo, "my.routing.key", [%{"foo" => 1}], nil, delay)
+      iex> %{"my_queue" => [message_id]} = PGMQ.send_batch_topic(Repo, "my.routing.key", [%{"id" => 1}], nil, delay)
       iex> is_integer(message_id)
       true
   """
@@ -959,10 +959,18 @@ defmodule EctoPGMQ.PGMQ do
         ) :: queue_message_ids()
   def send_batch_topic(repo, routing_key, payloads, headers \\ nil, delay \\ 0, opts \\ []) do
     type = pg_type(delay)
-    sql = "SELECT * FROM pgmq.send_batch_topic($1::text, $2::jsonb[], $3::jsonb[], $4::#{type})"
+
+    sql = """
+    SELECT
+      queue_name,
+      array_agg(msg_id)
+    FROM pgmq.send_batch_topic($1::text, $2::jsonb[], $3::jsonb[], $4::#{type})
+    GROUP BY queue_name
+    """
+
     params = [routing_key, payloads, headers, delay]
     %Result{rows: rows} = repo.query!(sql, params, opts)
-    Enum.group_by(rows, fn [queue, _] -> queue end, fn [_, id] -> id end)
+    Map.new(rows, fn [queue, ids] -> {queue, ids} end)
   end
 
   @doc """
@@ -973,7 +981,7 @@ defmodule EctoPGMQ.PGMQ do
 
   ## Examples
 
-      iex> message_ids = PGMQ.send_batch(Repo, "my_queue", [%{"foo" => 1}])
+      iex> message_ids = PGMQ.send_batch(Repo, "my_queue", [%{"id" => 1}])
       iex> [read_message] = PGMQ.read(Repo, "my_queue", 5, 1)
       iex> [updated_message] = PGMQ.set_vt(Repo, "my_queue", message_ids, 10)
       iex> DateTime.diff(updated_message.visible_at, read_message.visible_at) > 0

@@ -1,10 +1,6 @@
 defmodule EctoPGMQ.Metrics do
   @moduledoc """
-  Schema for PGMQ queue metrics.
-
-  > #### Read-Only {: .warning}
-  >
-  > This schema should be treated as read-only.
+  Read-only schema for PGMQ queue metrics.
   """
 
   use Ecto.Schema

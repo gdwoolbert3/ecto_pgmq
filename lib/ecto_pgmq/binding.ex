@@ -1,15 +1,6 @@
 defmodule EctoPGMQ.Binding do
   @moduledoc """
-  Schema for PGMQ queue bindings.
-
-  > #### Read-Only {: .warning}
-  >
-  > This schema should be treated as read-only. Queue bindings can be configured
-  > with `EctoPGMQ.create_queue/4` and `EctoPGMQ.update_queue/4`.
-
-  ## Message Routing
-
-  TODO(Gordon) - Add this
+  Read-only schema for PGMQ queue bindings.
   """
 
   use Ecto.Schema
@@ -24,8 +15,6 @@ defmodule EctoPGMQ.Binding do
   A PGMQ binding pattern.
 
   Binding patterns must meet the following conditions:
-
-  TODO(Gordon) - validate the wildcard docs
 
     * Must only contain alphanumeric characters, dots (`.`), hyphens (`-`),
       underscores (`_`), and wildcards (`*` and `\#`).

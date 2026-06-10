@@ -1,6 +1,6 @@
 FROM postgres:18-alpine
 
-# TODO(Gordon) - uncomment PGMQ version once release
+# TODO(Gordon) - uncomment PGMQ version once released
 ARG PG_PARTMAN_VERSION=v5.4.3
 # ARG PGMQ_VERSION=v1.11.2
 
