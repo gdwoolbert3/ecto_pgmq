@@ -87,7 +87,6 @@ defmodule EctoPGMQ.MixProject do
         "CONTRIBUTING.md",
         "CHANGELOG.md",
         "guides/pgmq_installation.md",
-        "guides/misc_pgmq_features.md",
         "guides/notifications.md",
         "guides/custom_payload_types.md",
         "guides/fifo_message_groups.md",
