@@ -15,6 +15,8 @@ All notable changes to this project will be documented in this file.
 
 ### Breaking Changes
 
+* `EctoPGMQ.send_messages/4` now returns a map of queues and message IDs
+
 * The `:group` key has been removed from the `EctoPGMQ.Message` schema
 
 * The `t:EctoPGMQ.Message.message/0` type has replaced the old `:spec` record
