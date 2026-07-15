@@ -16,7 +16,7 @@ The following requirements must be met to use this package in your project:
   * While `EctoPGMQ.Migrations` contains helper functions for _managing_ the
     PGMQ extension, this package does **NOT** include the PGMQ extension. For
     additional information about installing PGMQ, see
-    [PGMQ Installation](`m:EctoPGMQ#pgmq-installation`).
+    [PGMQ Installation](pgmq_installation.md).
 
 ## Installation
 

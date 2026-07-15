@@ -19,9 +19,9 @@ setting the throttle interval to `0`.
 
 ## Managing Notifications
 
-The notification configuration can be managed with `EctoPGMQ.create_queue/4`
-and `EctoPGMQ.update_queue/4` (or the corresponding functions in the
-`EctoPGMQ.Migrations` module):
+The notification configuration for a queue can be managed with
+`EctoPGMQ.create_queue/4` and `EctoPGMQ.update_queue/4` (or the corresponding
+functions in the `EctoPGMQ.Migrations` module):
 
 ```elixir
 # Create a queue with notifications enabled
