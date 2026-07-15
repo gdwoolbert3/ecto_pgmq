@@ -1,7 +1,7 @@
 FROM postgres:18-alpine
 
-ARG PG_PARTMAN_VERSION=v5.3.1
-ARG PGMQ_VERSION=v1.10.0
+ARG PG_PARTMAN_VERSION=v5.4.3
+ARG PGMQ_VERSION=v1.12.0
 
 RUN apk add --no-cache --virtual .build-deps \
     git \

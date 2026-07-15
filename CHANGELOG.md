@@ -2,6 +2,36 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.0.0] - 2026-07-15
+
+### Changed
+
+* Add support for topic-based message routing (see
+  [Message Routing](message_routing.md))
+
+* Add support for new PGMQ metadata "getter" functions to `EctoPGMQ.PGMQ`
+
+* Add support for `:head` FIFO message grouping
+
+### Breaking Changes
+
+* `EctoPGMQ.send_messages/4` now returns a map of queues and message IDs
+
+* The `:group` key has been removed from the `EctoPGMQ.Message` schema
+
+* The `t:EctoPGMQ.Message.message/0` type has replaced the old `:spec` record
+
+* The `EctoPGMQ.Throttle` schema no longer has a source and, therefore, can no
+  longer be manipulated via `Ecto.Repo` functions
+  (see `EctoPGMQ.Throttle.query/0`).
+
+* `EctoPGMQ` now requires PGMQ v1.12.0 or higher
+
+### Links
+
+* [GitHub](https://github.com/gdwoolbert3/ecto_pgmq/releases/tag/v2.0.0)
+* [HexDocs](https://hexdocs.pm/ecto_pgmq/2.0.0/readme.html)
+
 ## [1.1.0] - 2026-02-03
 
 ### Changed

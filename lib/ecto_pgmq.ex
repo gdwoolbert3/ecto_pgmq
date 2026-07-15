@@ -2,163 +2,16 @@ defmodule EctoPGMQ do
   @moduledoc """
   An opinionated PGMQ client for Elixir that builds on top of `Ecto` and the
   `Ecto.Adapters.Postgres` adapter.
-
-  ## PGMQ Installation
-
-  Because PGMQ is entirely made up of SQL objects, there are two available
-  installation methods:
-
-    * Extension Installation - This method installs PGMQ as a traditional
-      Postgres extension. This is the preferred installation method but it
-      requires access to the Postgres server file system and, therefore, may not
-      always be feasible.
-
-    * SQL Installation - This method installs PGMQ by manually creating all of
-      the necessary SQL objects and works entirely within the database.
-
-  `EctoPGMQ.Migrations` contains helper functions for managing both installation
-  methods.
-
-  For more information about managing the PGMQ extension, see the PGMQ
-  [Installation](https://github.com/pgmq/pgmq/blob/main/INSTALLATION.md) and
-  [Updating](https://github.com/pgmq/pgmq/blob/main/pgmq-extension/UPDATING.md)
-  guides.
-
-  ## Partitioning
-
-  PGMQ supports partitioning both queues and archives.
-
-  The [pg_partman extension](https://github.com/pgpartman/pg_partman) must be
-  available in order to use partitioning.
-
-  For more information about partitioning, see the
-  [PGMQ docs](https://github.com/pgmq/pgmq/tree/main?tab=readme-ov-file#partitioned-queues).
-
-  ## Polling
-
-  PGMQ supports Postgres server-side polling during read operations. Reading
-  with a poll can be used to reduce network round trips if there is a good
-  chance that demand can be satisfied in a short time **BUT** doing so utilizes
-  a connection for the duration of the read operation. As such, polling should
-  be avoided in situations where the DB connection pool is a bottleneck.
-
-  ## Custom Payload Types
-
-  `EctoPGMQ` leverages `Ecto.Type` and `Ecto.ParameterizedType` in order to
-  support custom payload types during both [send](`send_messages/4`) and
-  [read](`read_messages/5`) operations. The only requirement is that the custom
-  payload type must both dump to and load from a `t:map/0` (since PGMQ stores
-  message payloads in a `JSONB` column).
-
-  > #### Multiple Payload Types in a Queue {:.error}
-  >
-  > There are no guardrails in place to ensure that a single payload type is
-  > used for a given queue. Mixing multiple payload types in a single queue only
-  > works if they can all be loaded interchangably. This pattern is **NOT**
-  > recommended.
-
-  Message queries with custom payload types can also created by
-  `EctoPGMQ.Message.queue_query/2` and `EctoPGMQ.Message.archive_query/2`.
-
-  > #### Payload Types in Ecto Queries {: .warning}
-  >
-  > Due to how custom payload types are applied, non-map payloads can't be
-  > directly interpolated in an `Ecto.Query`. Instead, payloads must be cast
-  > with `Ecto.Query.API.type/2`:
-  >
-  > ```elixir
-  > "my_queue"
-  > |> EctoPGMQ.Message.queue_query(payload_type: MyType)
-  > |> where([m], m.payload == type(^my_custom_payload, MyType))
-  > |> Repo.all()
-  > ```
-  >
-  > Note that the second argument to the aforementioned function is **NOT** a
-  > `t:EctoPGMQ.Message.payload_type/0` but rather an `t:Ecto.Type.t/0`.
-  >
-  > Alternatively, PGMQ has experimental support for payload filtering. For more
-  > information, see `t:EctoPGMQ.PGMQ.conditional/0`.
-
-  ## FIFO Message Groups
-
-  While PGMQ queues are FIFO data structures, the order of message processing
-  can be non-deterministic when there are multiple consumers. This is usually
-  fine but there is sometimes a need to consume messages strictly in order
-  within a group. In order to support this, PGMQ exposes a number of functions
-  that read messages while guaranteeing FIFO ordering for messages with the same
-  `#{EctoPGMQ.PGMQ.group_header()}` header.
-
-  There are two slightly different methodologies for reading messages while
-  respecting FIFO message groups: round-robin reading and throughput-optimized
-  reading.
-
-  ### Round-Robin Reading
-
-  This method will fairly interleave messages from all available groups.
-
-      iex> message_specs =
-      ...>   [
-      ...>     Message.build(%{}, "A"),
-      ...>     Message.build(%{}, "A"),
-      ...>     Message.build(%{}, "B"),
-      ...>     Message.build(%{}, "B"),
-      ...>     Message.build(%{}, "C")
-      ...>   ]
-      ...>
-      iex> [id_1, id_2, id_3, id_4, id_5] = send_messages(Repo, "my_queue", message_specs)
-      iex> messages = read_messages(Repo, "my_queue", 300, 5, message_grouping: :round_robin)
-      iex> Enum.map(messages, & &1.id) == [id_1, id_3, id_5, id_2, id_4]
-      true
-
-  ### Throughput-Optimized Reading
-
-  This method will prioritize messages from the same group. As the name implies,
-  this method will often be more efficient than round-robin reading.
-
-      iex> message_specs =
-      ...>   [
-      ...>     Message.build(%{}, "A"),
-      ...>     Message.build(%{}, "A"),
-      ...>     Message.build(%{}, "B"),
-      ...>     Message.build(%{}, "B"),
-      ...>     Message.build(%{}, "C")
-      ...>   ]
-      ...>
-      iex> message_ids = send_messages(Repo, "my_queue", message_specs)
-      iex> messages = read_messages(Repo, "my_queue", 300, 5, message_grouping: :throughput_optimized)
-      iex> Enum.map(messages, & &1.id) == message_ids
-      true
-
-  > #### Long-Lived Message Groups {: .warning}
-  >
-  > If message groups are long-lived and high-volume, this method of reading can
-  > effectively starve later groups. For more information, see
-  > [Performance Considerations](#performance-considerations).
-
-  ### Performance Considerations
-
-  In general, FIFO message groups are more performant when the following
-  conditions are met:
-
-    * There are many low-volume groups
-
-    * Messages are removed from the queue relatively quickly
-
-    * The queue is optimized for FIFO message group reads (see
-      `EctoPGMQ.create_queue/4` and `EctoPGMQ.update_queue/4`).
-
-  ### Further Information
-
-  For more information about FIFO message groups, see the
-  [PGMQ docs](https://github.com/pgmq/pgmq/blob/main/docs/fifo-queues.md).
   """
 
   alias Ecto.Repo
+  alias EctoPGMQ.Binding
   alias EctoPGMQ.DurationType
-  alias EctoPGMQ.Message
   alias EctoPGMQ.PGMQ
   alias EctoPGMQ.Queue
   alias EctoPGMQ.Throttle
+
+  require EctoPGMQ.Message, as: Message
 
   ################################
   # Types
@@ -180,6 +33,9 @@ defmodule EctoPGMQ do
   For more information about this type, see `t:EctoPGMQ.PGMQ.delay/0`.
   """
   @type delay :: Duration.t() | PGMQ.delay()
+
+  @typedoc "A message destination."
+  @type destination :: Queue.name() | {:queue, Queue.name()} | {:routing_key, PGMQ.routing_key()}
 
   @typedoc """
   Message update attributes.
@@ -219,7 +75,8 @@ defmodule EctoPGMQ do
 
     * A `t:pos_integer/0` denoting a message-based interval.
 
-  For more information about partitioning, see [Partitioning](#partitioning).
+  For more information about partitioning, see
+  [Partitioning](`m:EctoPGMQ.PGMQ#partitioning`).
 
   For more information about this type, see
   `t:EctoPGMQ.PGMQ.partition_interval/0` and
@@ -240,7 +97,8 @@ defmodule EctoPGMQ do
     * A `t:pos_integer/0` denoting a length of time. The unit for the poll
       interval is milliseconds and the unit for the timeout is seconds.
 
-  For more information about polling, see [Polling](#polling).
+  For more information about polling, see
+  [Polling](`m:EctoPGMQ.PGMQ#polling`).
 
   For more information about this type, see `t:EctoPGMQ.PGMQ.poll_interval/0`
   and `t:EctoPGMQ.PGMQ.poll_timeout/0`.
@@ -252,10 +110,14 @@ defmodule EctoPGMQ do
 
   The following attributes are supported:
 
+    * `:bindings` - An optional `t:list/0` of `t:EctoPGMQ.Binding.pattern/0`
+      for the queue. Defaults to `[]`. For more information about bindings, see
+      [Message Routing](message_routing.md).
+
     * `:message_groups?` - An optional `t:boolean/0` denoting whether or not the
       queue should be optimized for FIFO message group reads. Defaults to
       `false`. For more information about FIFO message groups, see
-      [FIFO Message Groups](#fifo-message-groups).
+      [FIFO Message Groups](fifo_message_groups.md).
 
     * `:notifications` - An optional `t:notification_throttle/0` for the queue
       or `nil` to leave notifications disabled. Defaults to `nil`. For more
@@ -270,6 +132,7 @@ defmodule EctoPGMQ do
       should be unlogged. Defaults to `false`.
   """
   @type queue_create_attributes :: %{
+          optional(:bindings) => [Binding.pattern()],
           optional(:message_groups?) => boolean(),
           optional(:notifications) => notification_throttle() | nil,
           optional(:partitions) => partition_config() | nil,
@@ -281,16 +144,27 @@ defmodule EctoPGMQ do
 
   The following attributes are supported:
 
+    * `:bindings` - An optional `t:list/0` of `t:EctoPGMQ.Binding.pattern/0`
+      for the queue. For more information about bindings, see
+      [Message Routing](message_routing.md).
+
+       > #### Replace Behavior {: .warning}
+       >
+       > When given, this attribute will **REPLACE** the existing bindings for
+       > the queue. This means that this attribute must contain **ALL** of the
+       > desired bindings for the queue, not just a delta.
+
     * `:message_groups?` - `true` to optimize the queue for FIFO message group
       reads. Note that `true` is the only valid value because this operation
       cannot be undone. For more information about FIFO message groups, see
-      [FIFO Message Groups](#fifo-message-groups).
+      [FIFO Message Groups](fifo_message_groups.md).
 
     * `:notifications` - An optional `t:notification_throttle/0` for the queue or
       `nil` to disable notifications. For more information about notifications,
       see `EctoPGMQ.Notifications`.
   """
   @type queue_update_attributes :: %{
+          optional(:bindings) => [Binding.pattern()],
           optional(:message_groups?) => true,
           optional(:notifications) => notification_throttle() | nil
         }
@@ -310,7 +184,10 @@ defmodule EctoPGMQ do
       `:throughput_optimized`, or `nil` to ignore message groups when reading.
       This option is ignored when deleting on read. Defaults to `nil`. For more
       information about FIFO message groups, see
-      [FIFO Message Groups](#fifo-message-groups).
+      [FIFO Message Groups](fifo_message_groups.md).
+
+    * `:payload_type` - An optional `t:EctoPGMQ.Message.payload_type/0` for the
+      message payloads. Defaults to `:map`.
 
     * `:polling` - An optional `t:poll_config/0` for the read operation or nil
       to disable polling. This option is ignored when deleting on read. Defaults
@@ -319,7 +196,8 @@ defmodule EctoPGMQ do
   @type read_messages_opts :: [
           {:delete?, boolean()}
           | {:polling, poll_config() | nil}
-          | {:message_grouping, :round_robin | :throughput_optimized | nil}
+          | {:payload_type, Message.payload_type()}
+          | {:message_grouping, :head | :round_robin | :throughput_optimized | nil}
           | PGMQ.query_opt()
         ]
 
@@ -351,7 +229,7 @@ defmodule EctoPGMQ do
 
   ## Examples
 
-      iex> [%Queue{} | _] = all_queues(Repo)
+      iex> [%Queue{} | _] = EctoPGMQ.all_queues(Repo)
   """
   @doc group: "Queue API"
   @spec all_queues(Repo.t()) :: [Queue.t()]
@@ -371,17 +249,17 @@ defmodule EctoPGMQ do
 
   ## Examples
 
-      iex> queue = create_queue(Repo, "my_unpartitioned_queue", %{notifications: 1_000})
+      iex> queue = EctoPGMQ.create_queue(Repo, "my_unpartitioned_queue", %{notifications: 1_000})
       iex> %Queue{notifications: %Throttle{}} = queue
 
-      iex> queue = create_queue(Repo, "my_partitioned_queue", %{partitions: {10_000, 100_000}})
+      iex> queue = EctoPGMQ.create_queue(Repo, "my_partitioned_queue", %{partitions: {10_000, 100_000}})
       iex> %Queue{partitioned?: true} = queue
 
       iex> partitions = {Duration.new!(hour: 1), Duration.new!(day: 1)}
-      iex> queue = create_queue(Repo, "my_partitioned_queue", %{partitions: partitions})
+      iex> queue = EctoPGMQ.create_queue(Repo, "my_partitioned_queue", %{partitions: partitions})
       iex> %Queue{partitioned?: true} = queue
 
-      iex> queue = create_queue(Repo, "my_unlogged_queue", %{unlogged?: true})
+      iex> queue = EctoPGMQ.create_queue(Repo, "my_unlogged_queue", %{unlogged?: true})
       iex> %Queue{unlogged?: true} = queue
   """
   @doc group: "Queue API"
@@ -420,6 +298,11 @@ defmodule EctoPGMQ do
           PGMQ.create_fifo_index(repo, queue, opts)
         end
 
+        # Create bindings when specified
+        attributes
+        |> Map.get(:bindings, [])
+        |> Enum.each(&PGMQ.bind_topic(repo, &1, queue, opts))
+
         # Fetch created queue record
         repo.get!(Queue.query(), queue, opts)
       end,
@@ -440,7 +323,7 @@ defmodule EctoPGMQ do
 
   ## Examples
 
-      iex> drop_queue(Repo, "my_queue")
+      iex> EctoPGMQ.drop_queue(Repo, "my_queue")
       :ok
   """
   @doc group: "Queue API"
@@ -458,9 +341,9 @@ defmodule EctoPGMQ do
 
   ## Examples
 
-      iex> %Queue{} = get_queue(Repo, "my_queue")
+      iex> %Queue{} = EctoPGMQ.get_queue(Repo, "my_queue")
 
-      iex> get_queue(Repo, "my_non_existent_queue")
+      iex> EctoPGMQ.get_queue(Repo, "my_non_existent_queue")
       nil
   """
   @doc group: "Queue API"
@@ -478,8 +361,9 @@ defmodule EctoPGMQ do
 
   ## Examples
 
-      iex> send_messages(Repo, "my_queue", [Message.build(%{"foo" => 1})])
-      iex> purge_queue(Repo, "my_queue")
+      iex> messages = [Message.build(%{"id" => 1})]
+      iex> EctoPGMQ.send_messages(Repo, "my_queue", messages)
+      iex> EctoPGMQ.purge_queue(Repo, "my_queue")
       1
   """
   @doc group: "Queue API"
@@ -498,7 +382,7 @@ defmodule EctoPGMQ do
   > unexpected results.
 
   To update a queue in an `Ecto.Migration`, see
-  `EctoPGMQ.Migrations.update_queue/2`.
+  `EctoPGMQ.Migrations.update_queue/3`.
 
   ## Options
 
@@ -508,34 +392,34 @@ defmodule EctoPGMQ do
   ## Examples
 
       iex> throttle = Duration.new!(second: 5)
-      iex> queue = update_queue(Repo, "my_queue", %{notifications: throttle})
+      iex> queue = EctoPGMQ.update_queue(Repo, "my_queue", %{notifications: throttle})
       iex> %Queue{notifications: %Throttle{}} = queue
   """
   @doc group: "Queue API"
   @spec update_queue(Repo.t(), Queue.name(), queue_update_attributes()) :: Queue.t()
-  @spec update_queue(Repo.t(), Queue.name(), queue_create_attributes(), [PGMQ.query_opt()]) :: Queue.t()
+  @spec update_queue(Repo.t(), Queue.name(), queue_update_attributes(), [PGMQ.query_opt()]) :: Queue.t()
   def update_queue(repo, queue, attributes, opts \\ []) do
+    # credo:disable-for-lines:50 Credo.Check.Refactor.Nesting
     transaction(
       repo,
       fn ->
-        # Fetch existing throttle record
-        current_throttle = repo.get(Throttle, queue, opts)
+        # Fetch existing queue record
+        queue = repo.get!(Queue.query(), queue, opts)
 
         # Update notifications when specified
-        case {current_throttle, Map.fetch(attributes, :notifications)} do
+        case {queue.notifications, Map.fetch(attributes, :notifications)} do
           # Enable notifications when not already enabled
-          {nil, {:ok, nt}} when not is_nil(nt) ->
-            enable_notifications(repo, queue, nt, opts)
+          {nil, {:ok, notifications}} when not is_nil(notifications) ->
+            enable_notifications(repo, queue.name, notifications, opts)
 
           # Disable notifications when specified
           {%Throttle{}, {:ok, nil}} ->
-            PGMQ.disable_notify_insert(repo, queue, opts)
+            PGMQ.disable_notify_insert(repo, queue.name, opts)
 
           # Update notification throttle when specified
-          {%Throttle{} = throttle, {:ok, nt}} ->
-            throttle
-            |> Ecto.Changeset.cast(%{throttle: nt}, [:throttle])
-            |> repo.update!(opts)
+          {%Throttle{}, {:ok, notifications}} ->
+            notifications = maybe_to_time(notifications, :millisecond)
+            PGMQ.update_notify_insert(repo, queue.name, notifications, opts)
 
           # Do nothing when no change is specified
           _ ->
@@ -544,11 +428,25 @@ defmodule EctoPGMQ do
 
         # Create FIFO index when specified
         if Map.get(attributes, :message_groups?, false) do
-          PGMQ.create_fifo_index(repo, queue, opts)
+          PGMQ.create_fifo_index(repo, queue.name, opts)
+        end
+
+        # Update bindings when specified
+        with {:ok, bindings} <- Map.fetch(attributes, :bindings) do
+          existing = Enum.map(queue.bindings, & &1.pattern)
+          bindings = Enum.uniq(bindings)
+
+          Enum.each(bindings -- existing, fn pattern ->
+            PGMQ.bind_topic(repo, pattern, queue.name, opts)
+          end)
+
+          Enum.each(existing -- bindings, fn pattern ->
+            PGMQ.unbind_topic(repo, pattern, queue.name, opts)
+          end)
         end
 
         # Fetch updated queue record
-        repo.get!(Queue.query(), queue, opts)
+        repo.get!(Queue.query(), queue.name, opts)
       end,
       opts
     )
@@ -568,8 +466,9 @@ defmodule EctoPGMQ do
 
   ## Examples
 
-      iex> message_ids = send_messages(Repo, "my_queue", [Message.build(%{"foo" => 1})])
-      iex> archive_messages(Repo, "my_queue", message_ids)
+      iex> messages = [Message.build(%{"id" => 1})]
+      iex> %{"my_queue" => ids} = EctoPGMQ.send_messages(Repo, "my_queue", messages)
+      iex> EctoPGMQ.archive_messages(Repo, "my_queue", ids)
       :ok
   """
   @doc group: "Message API"
@@ -587,8 +486,9 @@ defmodule EctoPGMQ do
 
   ## Examples
 
-      iex> message_ids = send_messages(Repo, "my_queue", [Message.build(%{"foo" => 1})])
-      iex> delete_messages(Repo, "my_queue", message_ids)
+      iex> messages = [Message.build(%{"id" => 1})]
+      iex> %{"my_queue" => ids} = EctoPGMQ.send_messages(Repo, "my_queue", messages)
+      iex> EctoPGMQ.delete_messages(Repo, "my_queue", ids)
       :ok
   """
   @doc group: "Message API"
@@ -606,8 +506,10 @@ defmodule EctoPGMQ do
 
   ## Examples
 
-      iex> send_messages(Repo, "my_queue", [Message.build(%{"foo" => 1})])
-      iex> [%Message{reads: 1}] = read_messages(Repo, "my_queue", 5, 2)
+      iex> vt = Duration.new!(second: 5)
+      iex> messages = [Message.build(%{"id" => 1})]
+      iex> EctoPGMQ.send_messages(Repo, "my_queue", messages)
+      iex> [%Message{reads: 1}] = EctoPGMQ.read_messages(Repo, "my_queue", vt, 2)
   """
   @doc group: "Message API"
   @spec read_messages(Repo.t(), Queue.name(), visibility_timeout(), PGMQ.quantity()) :: [Message.t()]
@@ -616,13 +518,9 @@ defmodule EctoPGMQ do
           Queue.name(),
           visibility_timeout(),
           PGMQ.quantity(),
-          [
-            {:delete?, boolean()}
-            | {:polling, poll_config() | nil}
-            | {:message_grouping, :round_robin | :throughput_optimized | nil}
-            | PGMQ.query_opt()
-          ]
+          read_messages_opts()
         ) :: [Message.t()]
+  # credo:disable-for-lines:40 Credo.Check.Refactor.CyclomaticComplexity
   def read_messages(repo, queue, visibility_timeout, quantity, opts \\ []) do
     {delete?, opts} = Keyword.pop(opts, :delete?, false)
     {poll_config, opts} = Keyword.pop(opts, :polling)
@@ -640,6 +538,9 @@ defmodule EctoPGMQ do
         {false, nil, nil} ->
           PGMQ.read_query(queue, visibility_timeout, quantity, %{}, payload_type)
 
+        {false, nil, :head} ->
+          PGMQ.read_grouped_head_query(queue, visibility_timeout, quantity, payload_type)
+
         {false, nil, :round_robin} ->
           PGMQ.read_grouped_rr_query(queue, visibility_timeout, quantity, payload_type)
 
@@ -649,6 +550,10 @@ defmodule EctoPGMQ do
         {false, poll_config, nil} ->
           {interval, timeout} = parse_poll_config(poll_config)
           PGMQ.read_with_poll_query(queue, visibility_timeout, quantity, timeout, interval, %{}, payload_type)
+
+        {false, poll_config, :head} ->
+          {interval, timeout} = parse_poll_config(poll_config)
+          PGMQ.read_grouped_head_with_poll_query(queue, visibility_timeout, quantity, timeout, interval, payload_type)
 
         {false, poll_config, :round_robin} ->
           {interval, timeout} = parse_poll_config(poll_config)
@@ -674,27 +579,51 @@ defmodule EctoPGMQ do
 
     * `:delay` - An optional `t:delay/0` for the messages. Defaults to `0`.
 
+    * `:payload_type` - An optional `t:EctoPGMQ.Message.payload_type/0` for the
+      message payloads. Defaults to `:map`.
+
   ## Examples
 
+      iex> messages = [Message.build(%{"id" => 1})]
       iex> delay = Duration.new!(hour: 1)
-      iex> [message_id] = send_messages(Repo, "my_queue", [Message.build(%{"foo" => 1})], delay: delay)
-      iex> is_integer(message_id)
+      iex> %{"my_queue" => [id]} = EctoPGMQ.send_messages(Repo, "my_queue", messages, delay: delay)
+      iex> is_integer(id)
+      true
+
+      iex> messages = [Message.build(%{"id" => 1})]
+      iex> EctoPGMQ.PGMQ.bind_topic(Repo, "#", "my_queue")
+      iex> destination = {:routing_key, "my.routing.key"}
+      iex> %{"my_queue" => [id]} = EctoPGMQ.send_messages(Repo, destination, messages)
+      iex> is_integer(id)
       true
   """
   @doc group: "Message API"
-  @spec send_messages(Repo.t(), Queue.name(), [Message.specification()]) :: [Message.id()]
+  @spec send_messages(Repo.t(), destination(), [Message.message()]) :: PGMQ.queue_message_ids()
   @spec send_messages(
           Repo.t(),
-          Queue.name(),
-          [Message.specification()],
-          [{:delay, delay()} | PGMQ.query_opt()]
-        ) :: [Message.id()]
-  def send_messages(repo, queue, messages, opts \\ []) do
+          destination(),
+          [Message.message()],
+          [{:delay, delay()} | {:payload_type, Message.payload_type()} | PGMQ.query_opt()]
+        ) :: PGMQ.queue_message_ids()
+  def send_messages(repo, destination, messages, opts \\ []) do
     {delay, opts} = Keyword.pop(opts, :delay, 0)
     delay = maybe_to_time(delay, :second)
     {payload_type, opts} = Keyword.pop(opts, :payload_type, :map)
     {payloads, headers} = Message.to_pgmq_payloads_and_headers(messages, payload_type)
-    PGMQ.send_batch(repo, queue, payloads, headers, delay, opts)
+
+    destination
+    |> case do
+      queue when is_binary(queue) -> {:queue, queue}
+      destination -> destination
+    end
+    |> case do
+      {:queue, queue} ->
+        message_ids = PGMQ.send_batch(repo, queue, payloads, headers, delay, opts)
+        %{queue => message_ids}
+
+      {:routing_key, routing_key} ->
+        PGMQ.send_batch_topic(repo, routing_key, payloads, headers, delay, opts)
+    end
   end
 
   @doc """
@@ -707,9 +636,10 @@ defmodule EctoPGMQ do
 
   ## Examples
 
+      iex> messages = [Message.build(%{"id" => 1})]
       iex> visibility_timeout = Duration.new!(minute: 5)
-      iex> message_ids = send_messages(Repo, "my_queue", [Message.build(%{"foo" => 1})])
-      iex> update_messages(Repo, "my_queue", message_ids, %{visibility_timeout: visibility_timeout})
+      iex> %{"my_queue" => ids} = EctoPGMQ.send_messages(Repo, "my_queue", messages)
+      iex> EctoPGMQ.update_messages(Repo, "my_queue", ids, %{visibility_timeout: visibility_timeout})
       :ok
   """
   @doc group: "Message API"

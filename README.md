@@ -32,7 +32,7 @@ defp deps do
     {:postgrex, ">= 0.0.0"},
     # Broadway is required to use the `EctoPGMQ.Producer` module
     {:broadway, "~> 1.0"},
-    {:ecto_pgmq, "~> 1.1"}
+    {:ecto_pgmq, "~> 2.0"}
   ]
 end
 ```
@@ -98,7 +98,8 @@ end
 Messages can be sent to a queue with the following function:
 
 ```elixir
-EctoPGMQ.send_messages(MyApp.Repo, "my_queue", [%{"foo" => 1}, %{"bar" => 2}])
+messages = [Message.build(%{"id" => 1}), Message.build(%{"id" => 2})]
+EctoPGMQ.send_messages(MyApp.Repo, "my_queue", messages)
 ```
 
 ### Reading Messages
@@ -106,7 +107,7 @@ EctoPGMQ.send_messages(MyApp.Repo, "my_queue", [%{"foo" => 1}, %{"bar" => 2}])
 Messages can be read from a queue with the following function:
 
 ```elixir
-messages = EctoPGMQ.read_messages(MyApp.Repo, "my_queue", 300, 2)
+EctoPGMQ.read_messages(MyApp.Repo, "my_queue", 300, 2)
 ```
 
 Alternatively, messages can also be consumed in a `Broadway` pipeline with the

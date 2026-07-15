@@ -1,3 +1,5 @@
+name: ecto-pgmq
+
 services:
   postgres:
     build:

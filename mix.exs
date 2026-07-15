@@ -2,7 +2,7 @@ defmodule EctoPGMQ.MixProject do
   use Mix.Project
 
   @github "https://github.com/gdwoolbert3/ecto_pgmq"
-  @version "1.1.0"
+  @version "2.0.0"
 
   ################################
   # Public API
@@ -14,11 +14,16 @@ defmodule EctoPGMQ.MixProject do
     ]
   end
 
+  def cli do
+    [
+      preferred_envs: [ci: :test]
+    ]
+  end
+
   def project do
     [
       aliases: aliases(),
       app: :ecto_pgmq,
-      cli: cli(),
       deps: deps(),
       description: description(),
       dialyzer: dialyzer(),
@@ -48,21 +53,15 @@ defmodule EctoPGMQ.MixProject do
     ]
   end
 
-  def cli do
-    [
-      preferred_envs: [ci: :test]
-    ]
-  end
-
   defp deps do
     [
       {:ecto_sql, "~> 3.11"},
       {:postgrex, ">= 0.0.0"},
       {:broadway, "~> 1.0", optional: true},
-      {:ex_doc, "~> 0.40.1", only: :dev, runtime: false},
-      {:credo, "~> 1.7.16", only: [:dev, :test], runtime: false},
+      {:ex_doc, "~> 0.40.3", only: :dev, runtime: false},
+      {:credo, "~> 1.7.19", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4.7", only: [:dev, :test], runtime: false},
-      {:styler, "~> 1.10.1", only: [:dev, :test], runtime: false}
+      {:styler, "~> 1.11.0", only: [:dev, :test], runtime: false}
     ]
   end
 
@@ -86,7 +85,15 @@ defmodule EctoPGMQ.MixProject do
       extras: [
         "README.md",
         "CONTRIBUTING.md",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "guides/pgmq_installation.md",
+        "guides/notifications.md",
+        "guides/custom_payload_types.md",
+        "guides/fifo_message_groups.md",
+        "guides/message_routing.md"
+      ],
+      groups_for_extras: [
+        Guides: Path.wildcard("guides/*.md")
       ],
       groups_for_modules: [
         Core: [
@@ -97,6 +104,7 @@ defmodule EctoPGMQ.MixProject do
           EctoPGMQ.Producer
         ],
         Schemas: [
+          EctoPGMQ.Binding,
           EctoPGMQ.Message,
           EctoPGMQ.Metrics,
           EctoPGMQ.Queue,
@@ -113,7 +121,6 @@ defmodule EctoPGMQ.MixProject do
 
   defp package do
     [
-      files: ["lib", "mix.exs", "README*", "LICENSE"],
       maintainers: ["Gordon Woolbert"],
       licenses: ["MIT"],
       links: %{"GitHub" => @github}

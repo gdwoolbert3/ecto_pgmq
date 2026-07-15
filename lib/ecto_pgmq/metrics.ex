@@ -1,6 +1,6 @@
 defmodule EctoPGMQ.Metrics do
   @moduledoc """
-  Schema for PGMQ queue metrics.
+  Read-only schema for PGMQ queue metrics.
   """
 
   use Ecto.Schema
@@ -47,14 +47,23 @@ defmodule EctoPGMQ.Metrics do
   Metrics are fetched transparently when querying queues via
   `EctoPGMQ.Queue.query/0`.
 
-  > #### Read-Only Operation {: .warning}
-  >
-  > This query only supports read operations.
+  ## Message Age Filtering
+
+  This schema uses a custom `Ecto.Type` to load the message age fields into a
+  `t:Duration.t/0`. This custom type can cast both `t:Duration.t/0` structs and
+  `t:non_neg_integer/0` times (in seconds):
+
+  ```elixir
+  # Casting a Duration struct
+  where(Metrics.query(), [m], m.oldest_message_age >= ^Duration.new!(hour: 1))
+
+  # Casting an integer time
+  where(Metrics.query(), [m], m.newest_message_age <= 30)
+  ```
 
   ## Examples
 
-      iex> EctoPGMQ.create_queue(Repo, "my_queue")
-      iex> [%Metrics{}] = Repo.all(query())
+      iex> [%Metrics{} | _] = Repo.all(Metrics.query())
   """
   @spec query :: Ecto.Query.t()
   defdelegate query, to: EctoPGMQ.PGMQ, as: :metrics_all_query

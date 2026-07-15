@@ -238,8 +238,8 @@ containers, but here is an example:
 # Find the Postgres container name/ID
 docker ps
 
-# Replace "ecto_pgmq-postgres" with the container name/ID
-docker exec -it ecto_pgmq-postgres psql -U ecto_pgmq -d ecto_pgmq
+# Replace "ecto-pgmq-postgres" with the container name/ID
+docker exec -it ecto-pgmq-postgres psql -U ecto_pgmq -d ecto_pgmq
 ```
 
 > #### Tip {: .tip}
@@ -271,7 +271,8 @@ enhancements that could benefit the application:
 - Investigate adding a scheduled job framework (maybe on top of
   [pg_cron](https://github.com/citusdata/pg_cron))
 
-- Update the PGMQ extension to fix SQL-based installation failures
+- Investigate adding `Mix.Task` implementations to pull
+  [PGMQ extension files](https://github.com/pgmq/pgmq/tree/main/pgmq-extension/sql)
 
 ---
 

@@ -1,14 +1,14 @@
 defmodule EctoPGMQ.TestPipeline do
   @moduledoc """
-  A `Broadway` pipeline to be used for `EctoPGMQ` unit tests.
+  A simple `Broadway` pipeline to be used for `EctoPGMQ` unit tests.
 
-  This pipeline requires all processed messages to have a `"pid"` key in their
-  payload that contains the `t:list/0` representation of the test `t:pid/0`
-  (see `:erlang.pid_to_list/1`). This value is used to send a message of the
-  following shape back to the test process:
+  This pipeline requires all processed messages to have an `"encoded_pid"` key
+  in their payload that contains the `t:encoded_pid/0` of the test process (see
+  `get_encoded_pid/0`). This value is used to send a message of the following
+  shape back to the test process:
 
   ```elixir
-  {:success | :failure, EctoPGMQ.Message.t()}
+  {:success | :failure, EctoPGMQ.Message.id()}
   ```
 
   This pipeline also supports two optional payload keys:
@@ -27,6 +27,13 @@ defmodule EctoPGMQ.TestPipeline do
   alias Broadway.Message
   alias EctoPGMQ.Producer
   alias EctoPGMQ.TestRepo
+
+  ################################
+  # Types
+  ################################
+
+  @typedoc "An encoded `t:pid/0`."
+  @type encoded_pid :: String.t()
 
   ################################
   # Public API
@@ -79,6 +86,16 @@ defmodule EctoPGMQ.TestPipeline do
     )
   end
 
+  @doc """
+  Returns the `t:encoded_pid/0` for the current process.
+  """
+  @spec get_encoded_pid :: encoded_pid()
+  def get_encoded_pid do
+    self()
+    |> :erlang.term_to_binary()
+    |> Base.encode64()
+  end
+
   ################################
   # Broadway Callbacks
   ################################
@@ -89,10 +106,11 @@ defmodule EctoPGMQ.TestPipeline do
   def handle_message(:default, message, :context_not_set) do
     status = get_status(message)
 
-    message.data.payload
-    |> Map.fetch!("pid")
-    |> :erlang.list_to_pid()
-    |> send({status, message.data})
+    message.data
+    |> Map.fetch!("encoded_pid")
+    |> Base.decode64!()
+    |> :erlang.binary_to_term()
+    |> send({status, message.metadata.id})
 
     message
     |> maybe_configure_ack()
@@ -103,10 +121,10 @@ defmodule EctoPGMQ.TestPipeline do
   # Private API
   ################################
 
-  defp get_status(%{data: %{payload: %{"fail" => true}}}), do: :failure
+  defp get_status(%{data: %{"fail" => true}}), do: :failure
   defp get_status(_), do: :success
 
-  defp maybe_configure_ack(%{data: %{payload: %{"archive" => true}}} = message) do
+  defp maybe_configure_ack(%{data: %{"archive" => true}} = message) do
     Message.configure_ack(message, ack_action: :archive)
   end
 

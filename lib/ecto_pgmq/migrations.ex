@@ -19,7 +19,7 @@ defmodule EctoPGMQ.Migrations do
   ## Examples
 
   ```elixir
-  create_queue("my_queue")
+  Migrations.create_queue("my_queue")
   ```
   """
   @doc group: "EctoPGMQ API"
@@ -43,7 +43,7 @@ defmodule EctoPGMQ.Migrations do
   ## Examples
 
   ```elixir
-  drop_queue("my_queue")
+  Migrations.drop_queue("my_queue")
   ```
   """
   @doc group: "EctoPGMQ API"
@@ -63,7 +63,7 @@ defmodule EctoPGMQ.Migrations do
   ## Examples
 
   ```elixir
-  update_queue("my_queue", %{notifications: 1_000})
+  Migrations.update_queue("my_queue", %{notifications: 1_000})
   ```
   """
   @doc group: "EctoPGMQ API"
@@ -82,12 +82,12 @@ defmodule EctoPGMQ.Migrations do
   @doc """
   Creates the PGMQ extension in an `Ecto.Migration`.
 
-  For more information, see [PGMQ Installation](#pgmq-installation).
+  For more information, see [PGMQ Installation](pgmq_installation.md).
 
   ## Examples
 
   ```elixir
-  create_extension()
+  Migrations.create_extension()
   ```
   """
   @doc group: "Extension Installation API"
@@ -102,12 +102,12 @@ defmodule EctoPGMQ.Migrations do
   @doc """
   Drops the PGMQ extension in an `Ecto.Migration`.
 
-  For more information, see [PGMQ Installation](#pgmq-installation).
+  For more information, see [PGMQ Installation](pgmq_installation.md).
 
   ## Examples
 
   ```elixir
-  drop_extension()
+  Migrations.drop_extension()
   ```
   """
   @doc group: "Extension Installation API"
@@ -119,15 +119,16 @@ defmodule EctoPGMQ.Migrations do
   @doc """
   Updates the PGMQ extension to the default version in an `Ecto.Migration`.
 
-  For more information, see [PGMQ Installation](#pgmq-installation).
+  For more information, see [PGMQ Installation](pgmq_installation.md).
 
   ## Examples
 
   ```elixir
-  update_extension()
+  Migrations.update_extension()
   ```
   """
   @doc group: "Extension Installation API"
+  @spec update_extension :: :ok
   def update_extension do
     Migration.execute("ALTER EXTENSION #{PGMQ.extension()} UPDATE")
   end
@@ -135,14 +136,14 @@ defmodule EctoPGMQ.Migrations do
   @doc """
   Updates the PGMQ extension in an `Ecto.Migration`.
 
-  For more information, see [PGMQ Installation](#pgmq-installation).
+  For more information, see [PGMQ Installation](pgmq_installation.md).
 
   ## Examples
 
   ```elixir
-  update_extension("1.9.0")
+  Migrations.update_extension("1.12.0")
 
-  update_extension(Version.parse!("1.9.0"))
+  Migrations.update_extension(Version.parse!("1.12.0"))
   ```
   """
   @doc group: "Extension Installation API"
@@ -166,10 +167,10 @@ defmodule EctoPGMQ.Migrations do
   > #### Shell Utility Requirement {: .warning}
   >
   > This function leverages the same adapter callback as
-  > [`mix ecto.load`](https://hexdocs.pm/ecto_sql/Mix.Tasks.Ecto.Load.html) and
+  > [`mix ecto.load`](https://hexdocs.pm/ecto_sql/Mix.Tasks.Ecto.Load.html) and,
   > therefore, requires that the `psql` shell utility is available.
 
-  For more information, see [PGMQ Installation](#pgmq-installation).
+  For more information, see [PGMQ Installation](pgmq_installation.md).
 
   ## Examples
 
@@ -177,9 +178,9 @@ defmodule EctoPGMQ.Migrations do
   path =
     :my_app
     |> :code.priv_dir()
-    |> Path.join("repo/extensions/pgmq--1.9.0.sql")
+    |> Path.join("repo/extensions/pgmq--1.12.0.sql")
 
-  import_schema(path)
+  Migrations.import_schema(path)
   ```
   """
   @doc group: "SQL Installation API"
@@ -203,12 +204,12 @@ defmodule EctoPGMQ.Migrations do
   >
   > This function should **NOT** be used if PGMQ is installed as an extension.
 
-  For more information, see [PGMQ Installation](#pgmq-installation).
+  For more information, see [PGMQ Installation](pgmq_installation.md).
 
   ## Examples
 
   ```elixir
-  drop_schema()
+  Migrations.drop_schema()
   ```
   """
   @doc group: "SQL Installation API"

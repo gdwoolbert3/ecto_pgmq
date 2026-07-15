@@ -46,7 +46,7 @@ if Code.ensure_loaded?(Broadway) do
     that the queue is not empty. Depending on the characteristics of the queue,
     this approach to consumption may be less taxing on the repo connection pool
     than poll-based consumption. For more information about notifications and
-    when, to use them see `EctoPGMQ.Notifications`. Sample producer options for
+    when to use them see `EctoPGMQ.Notifications`. Sample producer options for
     notification-based consumption can be seen below:
 
     ```elixir
@@ -125,14 +125,27 @@ if Code.ensure_loaded?(Broadway) do
     > All acknowledgement configuration is effectively ignored when deleting
     > messages on read.
 
+    ## Message Structure
+
+    The `Broadway.Message` structs emitted by this module have the following
+    structure:
+
+      * `:data` - The `t:EctoPGMQ.Message.payload/0` of the message.
+
+      * `:metadata` - A `t:map/0` containing the following fields:
+
+          * `:queue` - The `t:EctoPGMQ.Queue.name/0` of the source queue
+
+          * All `t:EctoPGMQ.Message.t/0` fields except `:payload`
+
     ## Options
 
     An `EctoPGMQ.Producer` can be started with the following options:
 
       * `:dynamic_repo` - An optional `t:atom/0` name or `t:pid/0` of a dynamic
         repo to use for all DB operations. For more information about dynamic
-        repos, see
-        [Dynamic repositories](https://hexdocs.pm/ecto/replicas-and-dynamic-repositories.html#dynamic-repositories).
+        repositories, see the
+        [`Ecto` docs](https://hexdocs.pm/ecto/replicas-and-dynamic-repositories.html#dynamic-repositories).
 
       * `:listener` - An optional listener specification that can take any of
         the following forms:
@@ -223,7 +236,7 @@ if Code.ensure_loaded?(Broadway) do
             :delete
             | :archive
             | :nothing
-            | {:update_visibility_timeout, EctoPGMQ.visibility_timeout()}
+            | {:update_visibility_timeout, EctoPGMQ.delay()}
 
     ################################
     # Private Types
@@ -511,7 +524,7 @@ if Code.ensure_loaded?(Broadway) do
       :erlang.start_timer(time, self(), :read)
     end
 
-    # credo:disable-for-lines:30
+    # credo:disable-for-lines:30 Credo.Check.Refactor.Nesting
     defp start_worker(state, quantity) do
       task =
         Task.async(fn ->
@@ -524,9 +537,14 @@ if Code.ensure_loaded?(Broadway) do
               state.read_opts
             )
             |> Enum.map(fn pgmq_message ->
+              {payload, metadata} =
+                pgmq_message
+                |> Map.from_struct()
+                |> Map.pop!(:payload)
+
               %Message{
-                data: pgmq_message,
-                metadata: %{queue: state.queue},
+                data: payload,
+                metadata: Map.put(metadata, :queue, state.queue),
                 acknowledger:
                   {__MODULE__, {state.repo, state.dynamic_repo, state.queue},
                    %{
