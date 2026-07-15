@@ -60,7 +60,7 @@ Below are a few tools that can be used to run containers:
 
 <!-- tabs-open -->
 
-### Docker
+### Docker (Preferred)
 
 If you have [Docker](https://docs.docker.com/desktop/) installed, the containers
 can be run with the following command:

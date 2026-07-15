@@ -5,7 +5,7 @@ This guide covers the usage of FIFO message groups.
 ## When to Use
 
 While PGMQ queues are inherently FIFO data structures, messages can be processed
-in non-deterministic order when message processing is parallelized within a
+in a non-deterministic order when message processing is parallelized within a
 single consumer and/or across multiple consumers. In many cases, this isn't an
 issue but there is sometimes a need to consume messages strictly in order within
 a group. In order to support this, PGMQ exposes a number of functions that read
