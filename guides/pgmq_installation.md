@@ -45,7 +45,7 @@ defmodule MyApp.Repo.Migrations.CreatePgmq do
   def change do
     :my_app
     |> :code.priv_dir()
-    |> Path.join("repo/extensions/pgmq--1.11.2.sql")
+    |> Path.join("repo/extensions/pgmq--1.12.0.sql")
     |> Migrations.import_schema()
   end
 end

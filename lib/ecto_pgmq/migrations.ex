@@ -141,9 +141,9 @@ defmodule EctoPGMQ.Migrations do
   ## Examples
 
   ```elixir
-  Migrations.update_extension("1.11.2")
+  Migrations.update_extension("1.12.0")
 
-  Migrations.update_extension(Version.parse!("1.11.2"))
+  Migrations.update_extension(Version.parse!("1.12.0"))
   ```
   """
   @doc group: "Extension Installation API"
@@ -178,7 +178,7 @@ defmodule EctoPGMQ.Migrations do
   path =
     :my_app
     |> :code.priv_dir()
-    |> Path.join("repo/extensions/pgmq--1.11.2.sql")
+    |> Path.join("repo/extensions/pgmq--1.12.0.sql")
 
   Migrations.import_schema(path)
   ```

@@ -1,8 +1,7 @@
 FROM postgres:18-alpine
 
-# TODO(Gordon) - uncomment PGMQ version once released
 ARG PG_PARTMAN_VERSION=v5.4.3
-# ARG PGMQ_VERSION=v1.11.2
+ARG PGMQ_VERSION=v1.12.0
 
 RUN apk add --no-cache --virtual .build-deps \
     git \
@@ -15,7 +14,7 @@ RUN git clone https://github.com/pgpartman/pg_partman.git /tmp/pg_partman && \
 
 RUN git clone https://github.com/pgmq/pgmq.git /tmp/pgmq && \
     cd /tmp/pgmq && \
-    # git checkout "$PGMQ_VERSION" && \
+    git checkout "$PGMQ_VERSION" && \
     cd pgmq-extension && \
     make install
 

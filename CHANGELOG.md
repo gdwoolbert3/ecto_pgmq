@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [2.0.0] - 2026-06-10
+## [2.0.0] - 2026-07-15
 
 ### Changed
 
@@ -25,7 +25,7 @@ All notable changes to this project will be documented in this file.
   longer be manipulated via `Ecto.Repo` functions
   (see `EctoPGMQ.Throttle.query/0`).
 
-* `EctoPGMQ` now requires PGMQ v1.11.2
+* `EctoPGMQ` now requires PGMQ v1.12.0 or higher
 
 ### Links
 
